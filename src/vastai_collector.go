@@ -133,12 +133,16 @@ func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (e *VastAiCollector) Update(info *VastAiInfo) {
-	if info.myMachines != nil && info.offers != nil {
-		isMyMachineId := make(map[int]bool)
-		for _, machine := range *info.myMachines {
-			isMyMachineId[machine.Id] = true
-		}
+	if info.myMachines == nil {
+		return
+	}
 
+	isMyMachineId := make(map[int]bool)
+	for _, machine := range *info.myMachines {
+		isMyMachineId[machine.Id] = true
+	}
+
+	if info.offers != nil {
 		prices := []float64{}
 		for _, offer := range *info.offers {
 			if offer.GpuName == e.gpuName &&
@@ -159,7 +163,7 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 		}
 	}
 
-	if info.myMachines != nil {
+	{
 		for _, machine := range *info.myMachines {
 			labels := prometheus.Labels{
 				"id":       strconv.Itoa(machine.Id),
@@ -169,7 +173,7 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 			e.machine_ondemand_price_per_gpu_dollars.With(labels).Set(machine.ListedGpuCost)
 			e.machine_reliability.With(labels).Set(machine.Reliability)
 
-			var verified float64 = 0
+			verified := float64(0)
 			if machine.Verification == "verified" {
 				verified = 1
 			}
@@ -201,18 +205,20 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 
 	if info.myInstances != nil {
 		for _, instance := range *info.myInstances {
-			labels := prometheus.Labels{
-				"id":           strconv.Itoa(instance.Id),
-				"machine_id":   strconv.Itoa(instance.MachineId),
-				"docker_image": instance.ImageUuid,
+			if isMyMachineId[instance.MachineId] {
+				labels := prometheus.Labels{
+					"id":           strconv.Itoa(instance.Id),
+					"machine_id":   strconv.Itoa(instance.MachineId),
+					"docker_image": instance.ImageUuid,
+				}
+				running := float64(0)
+				if instance.ActualStatus == "running" {
+					running = 1
+				}
+				e.instance_is_running.With(labels).Set(running)
+				e.instance_price_per_gpu_dollars.With(labels).Set(instance.DphBase)
+				e.instance_start_timestamp.With(labels).Set(instance.StartDate)
 			}
-			var running float64 = 0
-			if instance.ActualStatus == "running" {
-				running = 1
-			}
-			e.instance_is_running.With(labels).Set(running)
-			e.instance_price_per_gpu_dollars.With(labels).Set(instance.DphBase)
-			e.instance_start_timestamp.With(labels).Set(instance.StartDate)
 		}
 	}
 }
