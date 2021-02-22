@@ -13,7 +13,7 @@ clean:
 
 install: bin/$(PROGRAM) uninstall
 	mkdir -p $(PREFIX)/bin
-	cp bin/$(PROGRAM) $(PREFIX)/bin/
+	cp bin/$(PROGRAM) bin/vast $(PREFIX)/bin/
 	cp systemd/$(PROGRAM).service /etc/systemd/system/
 	systemctl enable $(PROGRAM)
 	systemctl start $(PROGRAM)
