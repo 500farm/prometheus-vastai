@@ -20,6 +20,18 @@ var (
 		"key",
 		"Vast.ai API key",
 	).Required().String()
+	updateInterval = kingpin.Flag(
+		"update-interval",
+		"How often to query Vast.ai for updates",
+	).Default("1m").Duration()
+	gpuName = kingpin.Flag(
+		"gpu-name",
+		"Name of the GPU used to calculate average on-demand price",
+	).Default("RTX 3090").String()
+	minDlPerf = kingpin.Flag(
+		"min-dl-perf",
+		"Minimal DLPerf for GPUs used to calculate average on-demand price",
+	).Default("0").Float64()
 )
 
 func metricsHandler(w http.ResponseWriter, r *http.Request, vastAiCollector *VastAiCollector) {
@@ -36,12 +48,25 @@ func main() {
 
 	log.Infoln("Starting vast.ai exporter")
 
-	vastAiCollector, _ := newVastAiCollector(*apiKey)
+	if err := setVastAiApiKey(*apiKey); err != nil {
+		log.Fatalln(err)
+	}
+
+	vastAiCollector, _ := newVastAiCollector(*gpuName, *minDlPerf)
+	log.Infoln("Reading initial Vast.ai info")
 	info, err := getVastAiInfo()
 	if err != nil {
 		log.Errorln(err)
 	} else {
-		log.Infoln("Read initial Vast.ai info: ", info)
+		if info.offers != nil {
+			log.Infoln(len(*info.offers), "offers")
+		}
+		if info.myMachines != nil {
+			log.Infoln(len(*info.myMachines), "machines")
+		}
+		if info.myInstances != nil {
+			log.Infoln(len(*info.myInstances), "instances")
+		}
 		vastAiCollector.Update(info)
 	}
 
@@ -62,7 +87,7 @@ func main() {
 
 	go func() {
 		for {
-			time.Sleep(time.Second * 60)
+			time.Sleep(*updateInterval)
 			info, err := getVastAiInfo()
 			if err != nil {
 				log.Errorln(err)
