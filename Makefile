@@ -4,7 +4,7 @@ PROGRAM=vastai_exporter
 .PHONY: build clean install uninstall
 
 bin/$(PROGRAM): src/*.go
-	@GOOS=linux GOARCH=amd64 go build -o bin/$(PROGRAM) src/*.go
+	go build -o bin/$(PROGRAM) src/*.go
 
 build: bin/$(PROGRAM)
 
