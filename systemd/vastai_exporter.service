@@ -2,7 +2,7 @@
 Description=VastAi_Exporter
 
 [Service]
-ExecStart=/usr/local/bin/vastai_exporter
+ExecStart=/usr/local/bin/vastai_exporter --key CHANGEME
 Restart=always
 
 [Install]
