@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/montanaflynn/stats"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -11,7 +12,9 @@ type VastAiCollector struct {
 	gpuName   string
 	minDlPerf float64
 
-	average_ondemand_price_dollars prometheus.Gauge
+	ondemand_price_median_dollars          prometheus.Gauge
+	ondemand_price_10th_percentile_dollars prometheus.Gauge
+	ondemand_price_90th_percentile_dollars prometheus.Gauge
 
 	machine_ondemand_price_per_gpu_dollars *prometheus.GaugeVec
 	machine_is_verified                    *prometheus.GaugeVec
@@ -36,10 +39,20 @@ func newVastAiCollector(gpuName string, minDlPerf float64) (*VastAiCollector, er
 		gpuName:   gpuName,
 		minDlPerf: minDlPerf,
 
-		average_ondemand_price_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
+		ondemand_price_median_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "average_ondemand_price_dollars",
-			Help:      fmt.Sprintf("Average on-demand price among %s GPUs with DLPerf >= %f", gpuName, minDlPerf),
+			Name:      "ondemand_price_median_dollars",
+			Help:      fmt.Sprintf("Median on-demand price among verified %s GPUs with DLPerf >= %f", gpuName, minDlPerf),
+		}),
+		ondemand_price_10th_percentile_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "ondemand_price_10th_percentile_dollars",
+			Help:      fmt.Sprintf("10th percentile of on-demand prices among verified %s GPUs with DLPerf >= %f", gpuName, minDlPerf),
+		}),
+		ondemand_price_90th_percentile_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "ondemand_price_90th_percentile_dollars",
+			Help:      fmt.Sprintf("90th percentile of on-demand prices among verified %s GPUs with DLPerf >= %f", gpuName, minDlPerf),
 		}),
 
 		machine_ondemand_price_per_gpu_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -88,7 +101,9 @@ func newVastAiCollector(gpuName string, minDlPerf float64) (*VastAiCollector, er
 }
 
 func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- e.average_ondemand_price_dollars.Desc()
+	ch <- e.ondemand_price_median_dollars.Desc()
+	ch <- e.ondemand_price_10th_percentile_dollars.Desc()
+	ch <- e.ondemand_price_90th_percentile_dollars.Desc()
 
 	e.machine_ondemand_price_per_gpu_dollars.Describe(ch)
 	e.machine_is_verified.Describe(ch)
@@ -102,7 +117,9 @@ func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
-	ch <- e.average_ondemand_price_dollars
+	ch <- e.ondemand_price_median_dollars
+	ch <- e.ondemand_price_10th_percentile_dollars
+	ch <- e.ondemand_price_90th_percentile_dollars
 
 	e.machine_ondemand_price_per_gpu_dollars.Collect(ch)
 	e.machine_is_verified.Collect(ch)
@@ -122,20 +139,23 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 			isMyMachineId[machine.Id] = true
 		}
 
-		sum := float64(0)
-		count := 0
+		prices := []float64{}
 		for _, offer := range *info.offers {
 			if offer.GpuName == e.gpuName &&
 				offer.GpuFrac == 1 &&
 				offer.DlPerf/float64(offer.NumGpus) >= e.minDlPerf &&
 				!isMyMachineId[offer.MachineId] {
-				sum += offer.DphBase / float64(offer.NumGpus)
-				count++
+				prices = append(prices, offer.DphBase/float64(offer.NumGpus))
 			}
 		}
 
-		if count > 0 {
-			e.average_ondemand_price_dollars.Set(sum / float64(count))
+		if len(prices) > 0 {
+			median, _ := stats.Median(prices)
+			e.ondemand_price_median_dollars.Set(median)
+			percentile20, _ := stats.Percentile(prices, 20)
+			e.ondemand_price_10th_percentile_dollars.Set(percentile20)
+			percentile80, _ := stats.Percentile(prices, 80)
+			e.ondemand_price_90th_percentile_dollars.Set(percentile80)
 		}
 	}
 
