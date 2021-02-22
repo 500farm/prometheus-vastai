@@ -156,9 +156,9 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 			e.machine_is_verified.With(labels).Set(verified)
 
 			labels["direction"] = "up"
-			e.machine_inet_bps.With(labels).Set(machine.InetUp)
+			e.machine_inet_bps.With(labels).Set(machine.InetUp * 1e6)
 			labels["direction"] = "down"
-			e.machine_inet_bps.With(labels).Set(machine.InetDown)
+			e.machine_inet_bps.With(labels).Set(machine.InetDown * 1e6)
 			delete(labels, "direction")
 
 			countOnDemandRunning := machine.CurrentRentalsRunningOnDemand
