@@ -206,7 +206,7 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 				defJobsStopped := 0
 
 				for _, instance := range *info.myInstances {
-					if instance.MachineId == machine.id {
+					if instance.MachineId == machine.Id {
 						if instance.ActualStatus == "running" {
 							defJobsRunning++
 						} else {
