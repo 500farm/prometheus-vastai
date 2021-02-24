@@ -79,7 +79,7 @@ func newVastAiCollector(gpuName string, minDlPerf float64) (*VastAiCollector, er
 		machine_rentals_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_rentals_count",
-			Help:      "Count of current rentals (rental_type = 'ondemand'/'bid', rental_status = 'running'/'stopped')",
+			Help:      "Count of current rentals (rental_type = 'ondemand'/'bid'/'default', rental_status = 'running'/'stopped')",
 		}, machineLabelNamesRentals),
 
 		instance_is_running: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -200,6 +200,27 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 			e.machine_rentals_count.With(labels).Set(float64(countBidRunning))
 			labels["rental_status"] = "stopped"
 			e.machine_rentals_count.With(labels).Set(float64(countBidStopped))
+
+			if info.myInstances != nil {
+				defJobsRunning := 0
+				defJobsStopped := 0
+
+				for _, instance := range *info.myInstances {
+					if instance.MachineId == machine.id {
+						if instance.ActualStatus == "running" {
+							defJobsRunning++
+						} else {
+							defJobsStopped++
+						}
+					}
+				}
+
+				labels["rental_type"] = "default"
+				labels["rental_status"] = "running"
+				e.machine_rentals_count.With(labels).Set(float64(defJobsRunning))
+				labels["rental_status"] = "stopped"
+				e.machine_rentals_count.With(labels).Set(float64(defJobsStopped))
+			}
 		}
 	}
 
