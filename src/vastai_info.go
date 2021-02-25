@@ -49,7 +49,7 @@ type VastAiInstance struct {
 	StartDate    float64 `json:"start_date"`
 }
 
-func getVastAiInfo() (*VastAiInfo, error) {
+func getVastAiInfo() *VastAiInfo {
 	result := new(VastAiInfo)
 
 	var offers []VastAiOffer
@@ -73,7 +73,7 @@ func getVastAiInfo() (*VastAiInfo, error) {
 		result.myInstances = &myInstances
 	}
 
-	return result, nil
+	return result
 }
 
 func setVastAiApiKey(key string) error {

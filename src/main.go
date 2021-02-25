@@ -54,20 +54,14 @@ func main() {
 
 	vastAiCollector, _ := newVastAiCollector(*gpuName, *minDlPerf)
 	log.Infoln("Reading initial Vast.ai info")
-	info, err := getVastAiInfo()
-	if err != nil {
-		log.Errorln(err)
-	} else {
-		if info.offers != nil {
-			log.Infoln(len(*info.offers), "offers")
-		}
-		if info.myMachines != nil {
-			log.Infoln(len(*info.myMachines), "machines")
-		}
-		if info.myInstances != nil {
-			log.Infoln(len(*info.myInstances), "instances")
-		}
+	info := getVastAiInfo()
+	if info.offers != nil && info.myMachines != nil && info.myInstances != nil {
+		log.Infoln(len(*info.offers), "offers")
+		log.Infoln(len(*info.myMachines), "machines")
+		log.Infoln(len(*info.myInstances), "instances")
 		vastAiCollector.Update(info)
+	} else {
+		log.Fatalln("Could not read all required data from Vast.ai")
 	}
 
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
@@ -88,12 +82,7 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(*updateInterval)
-			info, err := getVastAiInfo()
-			if err != nil {
-				log.Errorln(err)
-			} else {
-				vastAiCollector.Update(info)
-			}
+			vastAiCollector.Update(getVastAiInfo())
 		}
 	}()
 
