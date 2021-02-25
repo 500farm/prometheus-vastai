@@ -43,6 +43,7 @@ type VastAiMachine struct {
 type VastAiInstance struct {
 	Id           int     `json:"id"`
 	MachineId    int     `json:"machine_id"`
+	HostId       int     `json:"host_id"`
 	ActualStatus string  `json:"actual_status"`
 	DphBase      float64 `json:"dph_base"`
 	ImageUuid    string  `json:"image_uuid"`

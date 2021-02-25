@@ -6,15 +6,18 @@ import (
 
 	"github.com/montanaflynn/stats"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/log"
 )
 
 type VastAiCollector struct {
 	gpuName   string
 	minDlPerf float64
+	hostId    int
 
 	ondemand_price_median_dollars          prometheus.Gauge
 	ondemand_price_10th_percentile_dollars prometheus.Gauge
 	ondemand_price_90th_percentile_dollars prometheus.Gauge
+	pending_payout_dollars                 prometheus.Gauge
 
 	machine_ondemand_price_per_gpu_dollars *prometheus.GaugeVec
 	machine_is_verified                    *prometheus.GaugeVec
@@ -38,6 +41,7 @@ func newVastAiCollector(gpuName string, minDlPerf float64) (*VastAiCollector, er
 	return &VastAiCollector{
 		gpuName:   gpuName,
 		minDlPerf: minDlPerf,
+		hostId:    0,
 
 		ondemand_price_median_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -53,6 +57,11 @@ func newVastAiCollector(gpuName string, minDlPerf float64) (*VastAiCollector, er
 			Namespace: namespace,
 			Name:      "ondemand_price_90th_percentile_dollars",
 			Help:      fmt.Sprintf("90th percentile of on-demand prices among verified %s GPUs with DLPerf >= %f", gpuName, minDlPerf),
+		}),
+		pending_payout_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "pending_payout_dollars",
+			Help:      "Pending payout (minus service fees)",
 		}),
 
 		machine_ondemand_price_per_gpu_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -104,6 +113,7 @@ func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.ondemand_price_median_dollars.Desc()
 	ch <- e.ondemand_price_10th_percentile_dollars.Desc()
 	ch <- e.ondemand_price_90th_percentile_dollars.Desc()
+	ch <- e.pending_payout_dollars.Desc()
 
 	e.machine_ondemand_price_per_gpu_dollars.Describe(ch)
 	e.machine_is_verified.Describe(ch)
@@ -120,6 +130,7 @@ func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- e.ondemand_price_median_dollars
 	ch <- e.ondemand_price_10th_percentile_dollars
 	ch <- e.ondemand_price_90th_percentile_dollars
+	ch <- e.pending_payout_dollars
 
 	e.machine_ondemand_price_per_gpu_dollars.Collect(ch)
 	e.machine_is_verified.Collect(ch)
@@ -239,7 +250,17 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 				e.instance_is_running.With(labels).Set(running)
 				e.instance_price_per_gpu_dollars.With(labels).Set(instance.DphBase)
 				e.instance_start_timestamp.With(labels).Set(instance.StartDate)
+				e.hostId = instance.HostId
 			}
+		}
+	}
+
+	if e.hostId > 0 {
+		pendingPayout, err := getPendingPayout(e.hostId)
+		if err != nil {
+			log.Errorln(err)
+		} else {
+			e.pending_payout_dollars.Set(pendingPayout)
 		}
 	}
 }
