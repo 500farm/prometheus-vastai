@@ -28,10 +28,6 @@ var (
 		"gpu-name",
 		"Name of the GPU used to calculate average on-demand price",
 	).Default("RTX 3090").String()
-	minDlPerf = kingpin.Flag(
-		"min-dl-perf",
-		"Minimal DLPerf for GPUs used to calculate average on-demand price",
-	).Default("0").Float64()
 )
 
 func metricsHandler(w http.ResponseWriter, r *http.Request, vastAiCollector *VastAiCollector) {
@@ -52,7 +48,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	vastAiCollector, _ := newVastAiCollector(*gpuName, *minDlPerf)
+	vastAiCollector, _ := newVastAiCollector(*gpuName)
 	log.Infoln("Reading initial Vast.ai info")
 	info := getVastAiInfo()
 	if info.offers != nil && info.myMachines != nil && info.myInstances != nil {

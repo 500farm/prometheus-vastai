@@ -10,9 +10,8 @@ import (
 )
 
 type VastAiCollector struct {
-	gpuName   string
-	minDlPerf float64
-	hostId    int
+	gpuName string
+	hostId  int
 
 	ondemand_price_median_dollars          prometheus.Gauge
 	ondemand_price_10th_percentile_dollars prometheus.Gauge
@@ -30,7 +29,7 @@ type VastAiCollector struct {
 	instance_start_timestamp       *prometheus.GaugeVec
 }
 
-func newVastAiCollector(gpuName string, minDlPerf float64) (*VastAiCollector, error) {
+func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
 	namespace := "vastai"
 
 	machineLabelNames := []string{"id", "hostname"}
@@ -39,9 +38,8 @@ func newVastAiCollector(gpuName string, minDlPerf float64) (*VastAiCollector, er
 	machineLabelNamesRentals := append(append([]string{}, machineLabelNames...), "rental_type", "rental_status")
 
 	return &VastAiCollector{
-		gpuName:   gpuName,
-		minDlPerf: minDlPerf,
-		hostId:    0,
+		gpuName: gpuName,
+		hostId:  0,
 
 		ondemand_price_median_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -154,11 +152,22 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 	}
 
 	if info.offers != nil {
+		// Find the highest DLPerf for this kind of GPU. Then, use it ignore offers with DLPerf too low compared to the highest.
+		topDlPerf := float64(0)
+		for _, offer := range *info.offers {
+			if offer.GpuName == e.gpuName && offer.GpuFrac == 1 {
+				dlPerf := offer.DlPerf / float64(offer.NumGpus)
+				if dlPerf > topDlPerf {
+					topDlPerf = dlPerf
+				}
+			}
+		}
+
 		prices := []float64{}
 		for _, offer := range *info.offers {
 			if offer.GpuName == e.gpuName &&
 				offer.GpuFrac == 1 &&
-				offer.DlPerf/float64(offer.NumGpus) >= e.minDlPerf &&
+				offer.DlPerf/float64(offer.NumGpus) >= topDlPerf*0.80 &&
 				!isMyMachineId[offer.MachineId] {
 				prices = append(prices, offer.DphBase/float64(offer.NumGpus))
 			}
