@@ -13,9 +13,9 @@ type VastAiCollector struct {
 	gpuName string
 	hostId  int
 
-	ondemand_price_median_dollars          prometheus.Gauge
-	ondemand_price_10th_percentile_dollars prometheus.Gauge
-	ondemand_price_90th_percentile_dollars prometheus.Gauge
+	ondemand_price_median_dollars          *prometheus.GaugeVec
+	ondemand_price_10th_percentile_dollars *prometheus.GaugeVec
+	ondemand_price_90th_percentile_dollars *prometheus.GaugeVec
 	pending_payout_dollars                 prometheus.Gauge
 
 	machine_ondemand_price_per_gpu_dollars *prometheus.GaugeVec
@@ -32,6 +32,7 @@ type VastAiCollector struct {
 func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
 	namespace := "vastai"
 
+	gpuLabelNames := []string{"gpu_name"}
 	machineLabelNames := []string{"id", "hostname"}
 	instanceLabelNames := []string{"id", "machine_id", "docker_image"}
 	machineLabelNamesInet := append(append([]string{}, machineLabelNames...), "direction")
@@ -41,21 +42,21 @@ func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
 		gpuName: gpuName,
 		hostId:  0,
 
-		ondemand_price_median_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
+		ondemand_price_median_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_median_dollars",
-			Help:      fmt.Sprintf("Median on-demand price among verified %s GPUs with DLPerf >= %f", gpuName, minDlPerf),
-		}),
-		ondemand_price_10th_percentile_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
+			Help:      fmt.Sprintf("Median on-demand price among verified %s GPUs with top DLPerf", gpuName),
+		}, gpuLabelNames),
+		ondemand_price_10th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_10th_percentile_dollars",
-			Help:      fmt.Sprintf("10th percentile of on-demand prices among verified %s GPUs with DLPerf >= %f", gpuName, minDlPerf),
-		}),
-		ondemand_price_90th_percentile_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
+			Help:      fmt.Sprintf("10th percentile of on-demand prices among verified %s GPUs with top DLPerf", gpuName),
+		}, gpuLabelNames),
+		ondemand_price_90th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_90th_percentile_dollars",
-			Help:      fmt.Sprintf("90th percentile of on-demand prices among verified %s GPUs with DLPerf >= %f", gpuName, minDlPerf),
-		}),
+			Help:      fmt.Sprintf("90th percentile of on-demand prices among verified %s GPUs with top DLPerf", gpuName),
+		}, gpuLabelNames),
 		pending_payout_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "pending_payout_dollars",
@@ -108,9 +109,9 @@ func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
 }
 
 func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- e.ondemand_price_median_dollars.Desc()
-	ch <- e.ondemand_price_10th_percentile_dollars.Desc()
-	ch <- e.ondemand_price_90th_percentile_dollars.Desc()
+	e.ondemand_price_median_dollars.Describe(ch)
+	e.ondemand_price_10th_percentile_dollars.Describe(ch)
+	e.ondemand_price_90th_percentile_dollars.Describe(ch)
 	ch <- e.pending_payout_dollars.Desc()
 
 	e.machine_ondemand_price_per_gpu_dollars.Describe(ch)
@@ -125,9 +126,9 @@ func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
-	ch <- e.ondemand_price_median_dollars
-	ch <- e.ondemand_price_10th_percentile_dollars
-	ch <- e.ondemand_price_90th_percentile_dollars
+	e.ondemand_price_median_dollars.Collect(ch)
+	e.ondemand_price_10th_percentile_dollars.Collect(ch)
+	e.ondemand_price_90th_percentile_dollars.Collect(ch)
 	ch <- e.pending_payout_dollars
 
 	e.machine_ondemand_price_per_gpu_dollars.Collect(ch)
@@ -174,12 +175,16 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 		}
 
 		if len(prices) > 0 {
+			labels := prometheus.Labels{
+				"gpu_name": e.gpuName,
+			}
+
 			median, _ := stats.Median(prices)
-			e.ondemand_price_median_dollars.Set(median)
+			e.ondemand_price_median_dollars.With(labels).Set(median)
 			percentile20, _ := stats.Percentile(prices, 20)
-			e.ondemand_price_10th_percentile_dollars.Set(percentile20)
+			e.ondemand_price_10th_percentile_dollars.With(labels).Set(percentile20)
 			percentile80, _ := stats.Percentile(prices, 80)
-			e.ondemand_price_90th_percentile_dollars.Set(percentile80)
+			e.ondemand_price_90th_percentile_dollars.With(labels).Set(percentile80)
 		}
 	}
 
