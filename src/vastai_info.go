@@ -48,6 +48,7 @@ type VastAiInstance struct {
 	DphBase      float64 `json:"dph_base"`
 	ImageUuid    string  `json:"image_uuid"`
 	StartDate    float64 `json:"start_date"`
+	MinBid       float64 `json:"min_bid"`
 }
 
 func getVastAiInfo() *VastAiInfo {
