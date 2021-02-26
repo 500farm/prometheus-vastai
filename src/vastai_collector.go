@@ -17,6 +17,7 @@ type VastAiCollector struct {
 	ondemand_price_10th_percentile_dollars *prometheus.GaugeVec
 	ondemand_price_90th_percentile_dollars *prometheus.GaugeVec
 	pending_payout_dollars                 prometheus.Gauge
+	paid_out_dollars                       prometheus.Gauge
 
 	machine_ondemand_price_per_gpu_dollars *prometheus.GaugeVec
 	machine_is_verified                    *prometheus.GaugeVec
@@ -62,6 +63,11 @@ func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
 			Namespace: namespace,
 			Name:      "pending_payout_dollars",
 			Help:      "Pending payout (minus service fees)",
+		}),
+		paid_out_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "paid_out_dollars",
+			Help:      "All-time paid out amount (minus service fees)",
 		}),
 
 		machine_ondemand_price_per_gpu_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -119,6 +125,7 @@ func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.ondemand_price_10th_percentile_dollars.Describe(ch)
 	e.ondemand_price_90th_percentile_dollars.Describe(ch)
 	ch <- e.pending_payout_dollars.Desc()
+	ch <- e.paid_out_dollars.Desc()
 
 	e.machine_ondemand_price_per_gpu_dollars.Describe(ch)
 	e.machine_is_verified.Describe(ch)
@@ -137,6 +144,7 @@ func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
 	e.ondemand_price_10th_percentile_dollars.Collect(ch)
 	e.ondemand_price_90th_percentile_dollars.Collect(ch)
 	ch <- e.pending_payout_dollars
+	ch <- e.paid_out_dollars
 
 	e.machine_ondemand_price_per_gpu_dollars.Collect(ch)
 	e.machine_is_verified.Collect(ch)
@@ -279,11 +287,12 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 	}
 
 	if e.hostId > 0 {
-		pendingPayout, err := getPendingPayout(e.hostId)
+		paidOut, pendingPayout, err := getPayouts(e.hostId)
 		if err != nil {
 			log.Errorln(err)
 		} else {
 			e.pending_payout_dollars.Set(pendingPayout)
+			e.paid_out_dollars.Set(paidOut)
 		}
 	}
 }
