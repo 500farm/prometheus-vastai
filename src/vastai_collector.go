@@ -45,7 +45,7 @@ func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
 
 	gpuLabelNames := []string{"gpu_name"}
 	machineLabelNames := []string{"id", "hostname"}
-	instanceLabelNames := []string{"id", "machine_id", "docker_image"}
+	instanceLabelNames := []string{"id", "machine_id", "docker_image", "is_default"}
 	machineLabelNamesInet := append(append([]string{}, machineLabelNames...), "direction")
 	machineLabelNamesRentals := append(append([]string{}, machineLabelNames...), "rental_type", "rental_status")
 
