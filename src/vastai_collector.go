@@ -288,10 +288,15 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 
 		for _, instance := range *info.myInstances {
 			if isMyMachineId[instance.MachineId] {
+				isDefault := "false"
+				if isDefaultJob(&instance) {
+					isDefault = "true"
+				}
 				labels := prometheus.Labels{
 					"id":           strconv.Itoa(instance.Id),
 					"machine_id":   strconv.Itoa(instance.MachineId),
 					"docker_image": instance.ImageUuid,
+					"is_default":   isDefault,
 				}
 
 				running := float64(0)
