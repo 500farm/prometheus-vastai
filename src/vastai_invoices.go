@@ -18,20 +18,25 @@ type VastAiInvoices struct {
 	} `json:"invoices"`
 }
 
-func getPayouts(userId int) (float64, float64, error) {
+type PayoutInfo struct {
+	paidOut       float64
+	pendingPayout float64
+}
+
+func getPayouts(userId int) (*PayoutInfo, error) {
 	var data VastAiInvoices
 	resp, err := http.Get(fmt.Sprintf("https://vast.ai/api/v0/users/%d/invoices/?api_key=%s", userId, *apiKey))
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 	paidOut := float64(0)
 	for _, invoice := range data.Invoices {
@@ -40,5 +45,5 @@ func getPayouts(userId int) (float64, float64, error) {
 			paidOut += amount
 		}
 	}
-	return paidOut, data.Current.Total, nil
+	return &PayoutInfo{paidOut, data.Current.Total}, nil
 }

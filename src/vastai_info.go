@@ -15,6 +15,7 @@ type VastAiInfo struct {
 	offers      *[]VastAiOffer
 	myMachines  *[]VastAiMachine
 	myInstances *[]VastAiInstance
+	payouts     *PayoutInfo
 }
 
 type VastAiOffer struct {

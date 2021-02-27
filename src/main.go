@@ -50,14 +50,10 @@ func main() {
 
 	vastAiCollector, _ := newVastAiCollector(*gpuName)
 	log.Infoln("Reading initial Vast.ai info")
-	info := getVastAiInfo()
-	if info.offers != nil && info.myMachines != nil && info.myInstances != nil {
-		log.Infoln(len(*info.offers), "offers")
-		log.Infoln(len(*info.myMachines), "machines")
-		log.Infoln(len(*info.myInstances), "instances")
-		vastAiCollector.Update(info)
-	} else {
-		log.Fatalln("Could not read all required data from Vast.ai")
+	err := vastAiCollector.InitialUpdate(getVastAiInfo())
+	if err != nil {
+		// initial update must succeed, otherwise exit
+		log.Fatalln(err)
 	}
 
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {

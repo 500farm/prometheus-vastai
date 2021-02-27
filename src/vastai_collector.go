@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -334,12 +335,30 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 
 	// process payouts
 	if e.hostId > 0 {
-		paidOut, pendingPayout, err := getPayouts(e.hostId)
+		payouts, err := getPayouts(e.hostId)
 		if err != nil {
 			log.Errorln(err)
 		} else {
-			e.pending_payout_dollars.Set(pendingPayout)
-			e.paid_out_dollars.Set(paidOut)
+			e.pending_payout_dollars.Set(payouts.pendingPayout)
+			e.paid_out_dollars.Set(payouts.paidOut)
+			info.payouts = payouts
 		}
 	}
+}
+
+func (e *VastAiCollector) InitialUpdate(info *VastAiInfo) error {
+	if info.offers == nil || info.myInstances == nil || info.myMachines == nil {
+		return errors.New("Could not read all required data from Vast.ai")
+	}
+
+	e.Update(info)
+
+	if info.payouts == nil {
+		return errors.New("Could not read all required data from Vast.ai")
+	}
+
+	log.Infoln(len(*info.offers), "offers")
+	log.Infoln(len(*info.myMachines), "machines")
+	log.Infoln(len(*info.myInstances), "instances")
+	return nil
 }
