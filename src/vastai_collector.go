@@ -178,6 +178,7 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 		isMyMachineId[machine.Id] = true
 	}
 
+	// process offers
 	if info.offers != nil {
 		// Find the highest DLPerf for this kind of GPU. Then, use it ignore offers with DLPerf too low compared to the highest.
 		topDlPerf := float64(0)
@@ -214,6 +215,7 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 		}
 	}
 
+	// process machines
 	{
 		for _, machine := range *info.myMachines {
 			labels := prometheus.Labels{
@@ -245,6 +247,7 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 			t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "running"}).Set(float64(countBidRunning))
 			t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "stopped"}).Set(float64(countBidStopped))
 
+			// count my/default jobs
 			if info.myInstances != nil {
 				defJobsRunning := 0
 				defJobsStopped := 0
@@ -265,6 +268,7 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 		}
 	}
 
+	// process instances
 	if info.myInstances != nil {
 		for _, t := range e.knownInstances {
 			t.keep = false
@@ -306,6 +310,7 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 		}
 	}
 
+	// process payouts
 	if e.hostId > 0 {
 		paidOut, pendingPayout, err := getPayouts(e.hostId)
 		if err != nil {
