@@ -251,19 +251,31 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 			if info.myInstances != nil {
 				defJobsRunning := 0
 				defJobsStopped := 0
+				myJobsRunning := 0
+				myJobsStopped := 0
 
 				for _, instance := range *info.myInstances {
 					if instance.MachineId == machine.Id {
-						if instance.ActualStatus == "running" {
-							defJobsRunning++
+						if isDefaultJob(&instance) {
+							if instance.ActualStatus == "running" {
+								defJobsRunning++
+							} else {
+								defJobsStopped++
+							}
 						} else {
-							defJobsStopped++
+							if instance.ActualStatus == "running" {
+								myJobsRunning++
+							} else {
+								myJobsStopped++
+							}
 						}
 					}
 				}
 
 				t.With(prometheus.Labels{"rental_type": "default", "rental_status": "running"}).Set(float64(defJobsRunning))
 				t.With(prometheus.Labels{"rental_type": "default", "rental_status": "stopped"}).Set(float64(defJobsStopped))
+				t.With(prometheus.Labels{"rental_type": "my", "rental_status": "running"}).Set(float64(myJobsRunning))
+				t.With(prometheus.Labels{"rental_type": "my", "rental_status": "stopped"}).Set(float64(myJobsStopped))
 			}
 		}
 	}
