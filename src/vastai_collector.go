@@ -9,9 +9,17 @@ import (
 	"github.com/prometheus/common/log"
 )
 
+type instanceInfo struct {
+	labels *prometheus.Labels
+	keep   bool
+}
+
+type instanceInfoMap map[int]*instanceInfo
+
 type VastAiCollector struct {
-	gpuName string
-	hostId  int
+	gpuName        string
+	hostId         int
+	knownInstances instanceInfoMap
 
 	ondemand_price_median_dollars          *prometheus.GaugeVec
 	ondemand_price_10th_percentile_dollars *prometheus.GaugeVec
@@ -24,6 +32,7 @@ type VastAiCollector struct {
 	machine_reliability                    *prometheus.GaugeVec
 	machine_inet_bps                       *prometheus.GaugeVec
 	machine_rentals_count                  *prometheus.GaugeVec
+	// todo: is_listed, is_online
 
 	instance_is_running                  *prometheus.GaugeVec
 	instance_my_bid_per_gpu_dollars      *prometheus.GaugeVec
@@ -41,8 +50,9 @@ func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
 	machineLabelNamesRentals := append(append([]string{}, machineLabelNames...), "rental_type", "rental_status")
 
 	return &VastAiCollector{
-		gpuName: gpuName,
-		hostId:  0,
+		gpuName:        gpuName,
+		hostId:         0,
+		knownInstances: make(instanceInfoMap),
 
 		ondemand_price_median_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -220,27 +230,20 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 			}
 			e.machine_is_verified.With(labels).Set(verified)
 
-			labels["direction"] = "up"
-			e.machine_inet_bps.With(labels).Set(machine.InetUp * 1e6)
-			labels["direction"] = "down"
-			e.machine_inet_bps.With(labels).Set(machine.InetDown * 1e6)
-			delete(labels, "direction")
+			t := e.machine_inet_bps.MustCurryWith(labels)
+			t.With(prometheus.Labels{"direction": "up"}).Set(machine.InetUp * 1e6)
+			t.With(prometheus.Labels{"direction": "down"}).Set(machine.InetDown * 1e6)
 
 			countOnDemandRunning := machine.CurrentRentalsRunningOnDemand
 			countOnDemandStopped := machine.CurrentRentalsOnDemand - countOnDemandRunning
 			countBidRunning := machine.CurrentRentalsRunning - countOnDemandRunning
 			countBidStopped := machine.CurrentRentalsResident - machine.CurrentRentalsOnDemand - countBidRunning
 
-			labels["rental_type"] = "ondemand"
-			labels["rental_status"] = "running"
-			e.machine_rentals_count.With(labels).Set(float64(countOnDemandRunning))
-			labels["rental_status"] = "stopped"
-			e.machine_rentals_count.With(labels).Set(float64(countOnDemandStopped))
-			labels["rental_type"] = "bid"
-			labels["rental_status"] = "running"
-			e.machine_rentals_count.With(labels).Set(float64(countBidRunning))
-			labels["rental_status"] = "stopped"
-			e.machine_rentals_count.With(labels).Set(float64(countBidStopped))
+			t = e.machine_rentals_count.MustCurryWith(labels)
+			t.With(prometheus.Labels{"rental_type": "ondemand", "rental_status": "running"}).Set(float64(countOnDemandRunning))
+			t.With(prometheus.Labels{"rental_type": "ondemand", "rental_status": "stopped"}).Set(float64(countOnDemandStopped))
+			t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "running"}).Set(float64(countBidRunning))
+			t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "stopped"}).Set(float64(countBidStopped))
 
 			if info.myInstances != nil {
 				defJobsRunning := 0
@@ -256,16 +259,17 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 					}
 				}
 
-				labels["rental_type"] = "default"
-				labels["rental_status"] = "running"
-				e.machine_rentals_count.With(labels).Set(float64(defJobsRunning))
-				labels["rental_status"] = "stopped"
-				e.machine_rentals_count.With(labels).Set(float64(defJobsStopped))
+				t.With(prometheus.Labels{"rental_type": "default", "rental_status": "running"}).Set(float64(defJobsRunning))
+				t.With(prometheus.Labels{"rental_type": "default", "rental_status": "stopped"}).Set(float64(defJobsStopped))
 			}
 		}
 	}
 
 	if info.myInstances != nil {
+		for _, t := range e.knownInstances {
+			t.keep = false
+		}
+
 		for _, instance := range *info.myInstances {
 			if isMyMachineId[instance.MachineId] {
 				labels := prometheus.Labels{
@@ -273,6 +277,7 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 					"machine_id":   strconv.Itoa(instance.MachineId),
 					"docker_image": instance.ImageUuid,
 				}
+
 				running := float64(0)
 				if instance.ActualStatus == "running" {
 					running = 1
@@ -281,7 +286,22 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 				e.instance_my_bid_per_gpu_dollars.With(labels).Set(instance.DphBase)
 				e.instance_highest_bid_per_gpu_dollars.With(labels).Set(instance.MinBid)
 				e.instance_start_timestamp.With(labels).Set(instance.StartDate)
+
 				e.hostId = instance.HostId
+
+				e.knownInstances[instance.Id] = &instanceInfo{&labels, true}
+			}
+		}
+
+		// remove metrics for disappeared instances
+		for id, t := range e.knownInstances {
+			if !t.keep {
+				labels := t.labels
+				e.instance_is_running.Delete(*labels)
+				e.instance_my_bid_per_gpu_dollars.Delete(*labels)
+				e.instance_highest_bid_per_gpu_dollars.Delete(*labels)
+				e.instance_start_timestamp.Delete(*labels)
+				delete(e.knownInstances, id)
 			}
 		}
 	}
