@@ -34,10 +34,10 @@ type VastAiCollector struct {
 	machine_rentals_count                  *prometheus.GaugeVec
 	// todo: is_listed, is_online
 
-	instance_is_running                  *prometheus.GaugeVec
-	instance_my_bid_per_gpu_dollars      *prometheus.GaugeVec
-	instance_highest_bid_per_gpu_dollars *prometheus.GaugeVec
-	instance_start_timestamp             *prometheus.GaugeVec
+	instance_is_running              *prometheus.GaugeVec
+	instance_my_bid_per_gpu_dollars  *prometheus.GaugeVec
+	instance_min_bid_per_gpu_dollars *prometheus.GaugeVec
+	instance_start_timestamp         *prometheus.GaugeVec
 }
 
 func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
@@ -45,7 +45,7 @@ func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
 
 	gpuLabelNames := []string{"gpu_name"}
 	machineLabelNames := []string{"id", "hostname"}
-	instanceLabelNames := []string{"id", "machine_id", "docker_image", "is_default"}
+	instanceLabelNames := []string{"id", "machine_id", "docker_image", "is_default", "is_bid"}
 	machineLabelNamesInet := append(append([]string{}, machineLabelNames...), "direction")
 	machineLabelNamesRentals := append(append([]string{}, machineLabelNames...), "rental_type", "rental_status")
 
@@ -117,10 +117,10 @@ func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
 			Name:      "instance_my_bid_per_gpu_dollars",
 			Help:      "My bid on this instance per GPU/hour",
 		}, instanceLabelNames),
-		instance_highest_bid_per_gpu_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		instance_min_bid_per_gpu_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "instance_highest_bid_per_gpu_dollars",
-			Help:      "Current highest bid on this instance per GPU/hour (=actual earnings if running)",
+			Name:      "instance_min_bid_per_gpu_dollars",
+			Help:      "Min bid to outbid this instance per GPU/hour (makes sense if is_bid=true)",
 		}, instanceLabelNames),
 		instance_start_timestamp: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -145,7 +145,7 @@ func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
 
 	e.instance_is_running.Describe(ch)
 	e.instance_my_bid_per_gpu_dollars.Describe(ch)
-	e.instance_highest_bid_per_gpu_dollars.Describe(ch)
+	e.instance_min_bid_per_gpu_dollars.Describe(ch)
 	e.instance_start_timestamp.Describe(ch)
 }
 
@@ -164,7 +164,7 @@ func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
 
 	e.instance_is_running.Collect(ch)
 	e.instance_my_bid_per_gpu_dollars.Collect(ch)
-	e.instance_highest_bid_per_gpu_dollars.Collect(ch)
+	e.instance_min_bid_per_gpu_dollars.Collect(ch)
 	e.instance_start_timestamp.Collect(ch)
 }
 
@@ -292,11 +292,16 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 				if isDefaultJob(&instance) {
 					isDefault = "true"
 				}
+				isBid := "false"
+				if instance.IsBid {
+					isBid = "true"
+				}
 				labels := prometheus.Labels{
 					"id":           strconv.Itoa(instance.Id),
 					"machine_id":   strconv.Itoa(instance.MachineId),
 					"docker_image": instance.ImageUuid,
 					"is_default":   isDefault,
+					"is_bid":       isBid,
 				}
 
 				running := float64(0)
@@ -305,7 +310,7 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 				}
 				e.instance_is_running.With(labels).Set(running)
 				e.instance_my_bid_per_gpu_dollars.With(labels).Set(instance.DphBase)
-				e.instance_highest_bid_per_gpu_dollars.With(labels).Set(instance.MinBid)
+				e.instance_min_bid_per_gpu_dollars.With(labels).Set(instance.MinBid)
 				e.instance_start_timestamp.With(labels).Set(instance.StartDate)
 
 				e.hostId = instance.HostId
@@ -320,7 +325,7 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 				labels := t.labels
 				e.instance_is_running.Delete(*labels)
 				e.instance_my_bid_per_gpu_dollars.Delete(*labels)
-				e.instance_highest_bid_per_gpu_dollars.Delete(*labels)
+				e.instance_min_bid_per_gpu_dollars.Delete(*labels)
 				e.instance_start_timestamp.Delete(*labels)
 				delete(e.knownInstances, id)
 			}
