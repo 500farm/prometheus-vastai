@@ -31,7 +31,9 @@ type VastAiMachine struct {
 	Id                            int     `json:"id"`
 	Hostname                      string  `json:"hostname"`
 	Verification                  string  `json:"verification"`
+	Listed                        bool    `json:"listed"`
 	Reliability                   float64 `json:"reliability2"`
+	Timeout                       float64 `json:"timeout"`
 	ListedGpuCost                 float64 `json:"listed_gpu_cost"`
 	CurrentRentalsOnDemand        int     `json:"current_rentals_on_demand"`
 	CurrentRentalsResident        int     `json:"current_rentals_resident"`
@@ -40,6 +42,7 @@ type VastAiMachine struct {
 	InetDown                      float64 `json:"inet_down"`
 	InetUp                        float64 `json:"inet_up"`
 	NumGpus                       int     `json:"num_gpus"`
+	GpuName                       string  `json:"gpu_name"`
 }
 
 type VastAiInstance struct {
@@ -54,6 +57,7 @@ type VastAiInstance struct {
 	MinBid       float64 `json:"min_bid"`
 	BundleId     *int    `json:"bundle_id"`
 	NumGpus      int     `json:"num_gpus"`
+	GpuName      string  `json:"gpu_name"`
 }
 
 func getVastAiInfo() *VastAiInfo {
@@ -126,4 +130,11 @@ func callVastCliJson(result interface{}, args ...string) error {
 		return err1
 	}
 	return nil
+}
+
+func boolToFloat(v bool) float64 {
+	if v {
+		return 1
+	}
+	return 0
 }

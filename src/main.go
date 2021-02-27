@@ -24,10 +24,6 @@ var (
 		"update-interval",
 		"How often to query Vast.ai for updates",
 	).Default("1m").Duration()
-	gpuName = kingpin.Flag(
-		"gpu-name",
-		"Name of the GPU used to calculate average on-demand price",
-	).Default("RTX 3090").String()
 )
 
 func metricsHandler(w http.ResponseWriter, r *http.Request, vastAiCollector *VastAiCollector) {
@@ -48,7 +44,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	vastAiCollector, _ := newVastAiCollector(*gpuName)
+	vastAiCollector, _ := newVastAiCollector()
 	log.Infoln("Reading initial Vast.ai info")
 	err := vastAiCollector.InitialUpdate(getVastAiInfo())
 	if err != nil {
