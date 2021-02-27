@@ -31,6 +31,7 @@ type VastAiCollector struct {
 	machine_ondemand_price_per_gpu_dollars *prometheus.GaugeVec
 	machine_is_verified                    *prometheus.GaugeVec
 	machine_reliability                    *prometheus.GaugeVec
+	machine_gpu_count                      *prometheus.GaugeVec
 	machine_inet_bps                       *prometheus.GaugeVec
 	machine_rentals_count                  *prometheus.GaugeVec
 	// todo: is_listed, is_online
@@ -39,14 +40,16 @@ type VastAiCollector struct {
 	instance_my_bid_per_gpu_dollars  *prometheus.GaugeVec
 	instance_min_bid_per_gpu_dollars *prometheus.GaugeVec
 	instance_start_timestamp         *prometheus.GaugeVec
+	instance_gpu_count               *prometheus.GaugeVec
+	instance_gpu_fraction            *prometheus.GaugeVec
 }
 
 func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
 	namespace := "vastai"
 
 	gpuLabelNames := []string{"gpu_name"}
-	machineLabelNames := []string{"id", "hostname"}
-	instanceLabelNames := []string{"id", "machine_id", "docker_image", "is_default", "is_bid"}
+	machineLabelNames := []string{"id", "hostname"} // todo: gpu_name?
+	instanceLabelNames := []string{"id", "machine_id", "docker_image", "rental_type"}
 	machineLabelNamesInet := append(append([]string{}, machineLabelNames...), "direction")
 	machineLabelNamesRentals := append(append([]string{}, machineLabelNames...), "rental_type", "rental_status")
 
@@ -96,11 +99,16 @@ func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
 			Name:      "machine_reliability",
 			Help:      "Reliability indicator (0.0-1.0)",
 		}, machineLabelNames),
+		machine_gpu_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "machine_gpu_count",
+			Help:      "Number of GPUs",
+		}, machineLabelNames),
 
 		machine_inet_bps: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_inet_bps",
-			Help:      "Measured internet speed, download or upload (direction = 'up' / 'down')",
+			Help:      "Measured internet speed, download or upload (direction = 'up'/'down')",
 		}, machineLabelNamesInet),
 		machine_rentals_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -121,12 +129,22 @@ func newVastAiCollector(gpuName string) (*VastAiCollector, error) {
 		instance_min_bid_per_gpu_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "instance_min_bid_per_gpu_dollars",
-			Help:      "Min bid to outbid this instance per GPU/hour (makes sense if is_bid=true)",
+			Help:      "Min bid to outbid this instance per GPU/hour (makes sense if rental_type = 'default'/'bid')",
 		}, instanceLabelNames),
 		instance_start_timestamp: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "instance_start_timestamp",
 			Help:      "Unix timestamp when instance was started",
+		}, instanceLabelNames),
+		instance_gpu_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "instance_gpu_count",
+			Help:      "Number of GPUs assigned to this instance",
+		}, instanceLabelNames),
+		instance_gpu_fraction: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "instance_gpu_fraction",
+			Help:      "Number of GPUs assigned to this instance divided by total number of GPUs on the host",
 		}, instanceLabelNames),
 	}, nil
 }
@@ -141,6 +159,7 @@ func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.machine_ondemand_price_per_gpu_dollars.Describe(ch)
 	e.machine_is_verified.Describe(ch)
 	e.machine_reliability.Describe(ch)
+	e.machine_gpu_count.Describe(ch)
 	e.machine_inet_bps.Describe(ch)
 	e.machine_rentals_count.Describe(ch)
 
@@ -148,6 +167,8 @@ func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.instance_my_bid_per_gpu_dollars.Describe(ch)
 	e.instance_min_bid_per_gpu_dollars.Describe(ch)
 	e.instance_start_timestamp.Describe(ch)
+	e.instance_gpu_count.Describe(ch)
+	e.instance_gpu_fraction.Describe(ch)
 }
 
 func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
@@ -160,6 +181,7 @@ func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
 	e.machine_ondemand_price_per_gpu_dollars.Collect(ch)
 	e.machine_is_verified.Collect(ch)
 	e.machine_reliability.Collect(ch)
+	e.machine_gpu_count.Collect(ch)
 	e.machine_inet_bps.Collect(ch)
 	e.machine_rentals_count.Collect(ch)
 
@@ -167,6 +189,8 @@ func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
 	e.instance_my_bid_per_gpu_dollars.Collect(ch)
 	e.instance_min_bid_per_gpu_dollars.Collect(ch)
 	e.instance_start_timestamp.Collect(ch)
+	e.instance_gpu_count.Collect(ch)
+	e.instance_gpu_fraction.Collect(ch)
 }
 
 func (e *VastAiCollector) Update(info *VastAiInfo) {
@@ -175,8 +199,10 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 	}
 
 	isMyMachineId := make(map[int]bool)
+	numGpus := make(map[int]int)
 	for _, machine := range *info.myMachines {
 		isMyMachineId[machine.Id] = true
+		numGpus[machine.Id] = machine.NumGpus
 	}
 
 	// process offers
@@ -226,6 +252,7 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 
 			e.machine_ondemand_price_per_gpu_dollars.With(labels).Set(machine.ListedGpuCost)
 			e.machine_reliability.With(labels).Set(machine.Reliability)
+			e.machine_gpu_count.With(labels).Set(float64(machine.NumGpus))
 
 			verified := float64(0)
 			if machine.Verification == "verified" {
@@ -289,20 +316,17 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 
 		for _, instance := range *info.myInstances {
 			if isMyMachineId[instance.MachineId] {
-				isDefault := "false"
+				rentalType := "ondemand"
 				if isDefaultJob(&instance) {
-					isDefault = "true"
-				}
-				isBid := "false"
-				if instance.IsBid {
-					isBid = "true"
+					rentalType = "default"
+				} else if instance.IsBid {
+					rentalType = "bid"
 				}
 				labels := prometheus.Labels{
 					"id":           strconv.Itoa(instance.Id),
 					"machine_id":   strconv.Itoa(instance.MachineId),
 					"docker_image": instance.ImageUuid,
-					"is_default":   isDefault,
-					"is_bid":       isBid,
+					"rental_type":  rentalType,
 				}
 
 				running := float64(0)
@@ -313,6 +337,8 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 				e.instance_my_bid_per_gpu_dollars.With(labels).Set(instance.DphBase)
 				e.instance_min_bid_per_gpu_dollars.With(labels).Set(instance.MinBid)
 				e.instance_start_timestamp.With(labels).Set(instance.StartDate)
+				e.instance_gpu_count.With(labels).Set(float64(instance.NumGpus))
+				e.instance_gpu_fraction.With(labels).Set(float64(instance.NumGpus) / float64(numGpus[instance.MachineId]))
 
 				e.hostId = instance.HostId
 
@@ -328,6 +354,8 @@ func (e *VastAiCollector) Update(info *VastAiInfo) {
 				e.instance_my_bid_per_gpu_dollars.Delete(*labels)
 				e.instance_min_bid_per_gpu_dollars.Delete(*labels)
 				e.instance_start_timestamp.Delete(*labels)
+				e.instance_gpu_count.Delete(*labels)
+				e.instance_gpu_fraction.Delete(*labels)
 				delete(e.knownInstances, id)
 			}
 		}

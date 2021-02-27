@@ -39,6 +39,7 @@ type VastAiMachine struct {
 	CurrentRentalsRunningOnDemand int     `json:"current_rentals_running_on_demand"`
 	InetDown                      float64 `json:"inet_down"`
 	InetUp                        float64 `json:"inet_up"`
+	NumGpus                       int     `json:"num_gpus"`
 }
 
 type VastAiInstance struct {
@@ -52,6 +53,7 @@ type VastAiInstance struct {
 	IsBid        bool    `json:"is_bid"`
 	MinBid       float64 `json:"min_bid"`
 	BundleId     *int    `json:"bundle_id"`
+	NumGpus      int     `json:"num_gpus"`
 }
 
 func getVastAiInfo() *VastAiInfo {
