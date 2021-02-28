@@ -18,7 +18,7 @@ type instanceInfoMap map[int]*instanceInfo
 
 type VastAiCollector struct {
 	knownInstances instanceInfoMap
-	prevPayouts    *PayoutInfo
+	lastPayouts    *PayoutInfo
 
 	ondemand_price_median_dollars          *prometheus.GaugeVec
 	ondemand_price_10th_percentile_dollars *prometheus.GaugeVec
@@ -56,6 +56,7 @@ func newVastAiCollector() (*VastAiCollector, error) {
 
 	return &VastAiCollector{
 		knownInstances: make(instanceInfoMap),
+		lastPayouts:    readLastPayouts(),
 
 		ondemand_price_median_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -380,12 +381,16 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 	// process payouts
 	if info.payouts != nil {
 		// workaround: make sure pendingPayout grows strictly monotonically unless a payout happened
-		if e.prevPayouts == nil ||
-			info.payouts.pendingPayout > e.prevPayouts.pendingPayout ||
-			info.payouts.paidOut > e.prevPayouts.paidOut {
-			e.pending_payout_dollars.Set(info.payouts.pendingPayout)
-			e.paid_out_dollars.Set(info.payouts.paidOut)
-			e.prevPayouts = info.payouts
+		if e.lastPayouts == nil ||
+			info.payouts.PendingPayout > e.lastPayouts.PendingPayout ||
+			info.payouts.PaidOut > e.lastPayouts.PaidOut {
+
+			e.pending_payout_dollars.Set(info.payouts.PendingPayout)
+			e.paid_out_dollars.Set(info.payouts.PaidOut)
+
+			// store lastPayouts and write them to the status file
+			e.lastPayouts = info.payouts
+			storeLastPayouts(info.payouts)
 		}
 	}
 }
