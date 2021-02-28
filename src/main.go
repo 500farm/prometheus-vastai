@@ -46,7 +46,7 @@ func main() {
 
 	vastAiCollector, _ := newVastAiCollector()
 	log.Infoln("Reading initial Vast.ai info")
-	err := vastAiCollector.InitialUpdate(getVastAiInfo())
+	err := vastAiCollector.InitialUpdateFrom(getVastAiInfoFromApi())
 	if err != nil {
 		// initial update must succeed, otherwise exit
 		log.Fatalln(err)
@@ -70,7 +70,7 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(*updateInterval)
-			vastAiCollector.Update(getVastAiInfo())
+			vastAiCollector.UpdateFrom(getVastAiInfoFromApi())
 		}
 	}()
 

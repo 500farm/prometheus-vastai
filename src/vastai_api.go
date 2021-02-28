@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-type VastAiInfo struct {
+type VastAiApiResults struct {
 	offers      *[]VastAiOffer
 	myMachines  *[]VastAiMachine
 	myInstances *[]VastAiInstance
@@ -60,8 +60,8 @@ type VastAiInstance struct {
 	GpuName      string  `json:"gpu_name"`
 }
 
-func getVastAiInfo() *VastAiInfo {
-	result := new(VastAiInfo)
+func getVastAiInfoFromApi() *VastAiApiResults {
+	result := new(VastAiApiResults)
 
 	var offers []VastAiOffer
 	if err := callVastCliJson(&offers, "search", "offers", "-n", "--storage=0", "--disable-bundling", "verified=true"); err != nil {
