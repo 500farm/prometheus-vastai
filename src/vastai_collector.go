@@ -18,6 +18,7 @@ type instanceInfoMap map[int]*instanceInfo
 
 type VastAiCollector struct {
 	knownInstances instanceInfoMap
+	prevPayouts    *PayoutInfo
 
 	ondemand_price_median_dollars          *prometheus.GaugeVec
 	ondemand_price_10th_percentile_dollars *prometheus.GaugeVec
@@ -378,8 +379,14 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 
 	// process payouts
 	if info.payouts != nil {
-		e.pending_payout_dollars.Set(info.payouts.pendingPayout)
-		e.paid_out_dollars.Set(info.payouts.paidOut)
+		// workaround: make sure pendingPayout grows strictly monotonically unless a payout happened
+		if e.prevPayouts == nil ||
+			info.payouts.pendingPayout > e.prevPayouts.pendingPayout ||
+			info.payouts.paidOut > e.prevPayouts.paidOut {
+			e.pending_payout_dollars.Set(info.payouts.pendingPayout)
+			e.paid_out_dollars.Set(info.payouts.paidOut)
+			e.prevPayouts = info.payouts
+		}
 	}
 }
 
