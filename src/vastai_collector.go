@@ -17,7 +17,6 @@ type instanceInfo struct {
 type instanceInfoMap map[int]*instanceInfo
 
 type VastAiCollector struct {
-	hostId         int
 	knownInstances instanceInfoMap
 
 	ondemand_price_median_dollars          *prometheus.GaugeVec
@@ -55,7 +54,6 @@ func newVastAiCollector() (*VastAiCollector, error) {
 	instanceLabelNames := []string{"id", "machine_id", "docker_image", "rental_type", "gpu_name"}
 
 	return &VastAiCollector{
-		hostId:         0,
 		knownInstances: make(instanceInfoMap),
 
 		ondemand_price_median_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -359,8 +357,6 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 				e.instance_gpu_count.With(labels).Set(float64(instance.NumGpus))
 				e.instance_gpu_fraction.With(labels).Set(float64(instance.NumGpus) / float64(numGpus[instance.MachineId]))
 
-				e.hostId = instance.HostId
-
 				e.knownInstances[instance.Id] = &instanceInfo{&labels, true}
 			}
 		}
@@ -381,28 +377,18 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 	}
 
 	// process payouts
-	if e.hostId > 0 {
-		payouts, err := getPayouts(e.hostId)
-		if err != nil {
-			log.Errorln(err)
-		} else {
-			e.pending_payout_dollars.Set(payouts.pendingPayout)
-			e.paid_out_dollars.Set(payouts.paidOut)
-			info.payouts = payouts
-		}
+	if info.payouts != nil {
+		e.pending_payout_dollars.Set(info.payouts.pendingPayout)
+		e.paid_out_dollars.Set(info.payouts.paidOut)
 	}
 }
 
 func (e *VastAiCollector) InitialUpdateFrom(info *VastAiApiResults) error {
-	if info.offers == nil || info.myInstances == nil || info.myMachines == nil {
+	if info.offers == nil || info.myInstances == nil || info.myMachines == nil || info.payouts == nil {
 		return errors.New("Could not read all required data from Vast.ai")
 	}
 
 	e.UpdateFrom(info)
-
-	if info.payouts == nil {
-		return errors.New("Could not read all required data from Vast.ai")
-	}
 
 	log.Infoln(len(*info.offers), "offers")
 	log.Infoln(len(*info.myMachines), "machines")

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -23,9 +22,9 @@ type PayoutInfo struct {
 	pendingPayout float64
 }
 
-func getPayouts(userId int) (*PayoutInfo, error) {
+func getPayouts() (*PayoutInfo, error) {
 	var data VastAiInvoices
-	resp, err := http.Get(fmt.Sprintf("https://vast.ai/api/v0/users/%d/invoices/?api_key=%s", userId, *apiKey))
+	resp, err := http.Get("https://vast.ai/api/v0/users/current/invoices/?api_key=" + *apiKey)
 	if err != nil {
 		return nil, err
 	}
