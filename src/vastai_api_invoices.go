@@ -44,7 +44,9 @@ func getPayouts() (*PayoutInfo, error) {
 	for _, invoice := range data.Invoices {
 		if invoice.Type == "payment" {
 			amount, _ := strconv.ParseFloat(invoice.Amount, 64)
-			paidOut += int64(amount * 100)
+			if amount > 0 {
+				paidOut += int64(amount * 100)
+			}
 		}
 	}
 	return &PayoutInfo{float64(paidOut) / 100, data.Current.Total}, nil
