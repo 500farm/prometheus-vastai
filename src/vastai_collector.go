@@ -400,10 +400,16 @@ func (e *VastAiCollector) InitialUpdateFrom(info *VastAiApiResults) error {
 		return errors.New("Could not read all required data from Vast.ai")
 	}
 
+	if e.lastPayouts != nil {
+		e.pending_payout_dollars.Set(e.lastPayouts.PendingPayout)
+		e.paid_out_dollars.Set(e.lastPayouts.PaidOut)
+	}
+
 	e.UpdateFrom(info)
 
 	log.Infoln(len(*info.offers), "offers")
 	log.Infoln(len(*info.myMachines), "machines")
 	log.Infoln(len(*info.myInstances), "instances")
+	log.Infoln("payouts:", *info.payouts);
 	return nil
 }
