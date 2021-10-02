@@ -1,9 +1,0 @@
-[Unit]
-Description=VastAi_Exporter
-
-[Service]
-ExecStart=/usr/local/bin/vastai_exporter --key CHANGEME
-Restart=always
-
-[Install]
-WantedBy=multi-user.target

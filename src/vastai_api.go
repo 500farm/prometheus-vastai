@@ -110,7 +110,7 @@ func setVastAiApiKey(key string) error {
 }
 
 func callVastCli(args ...string) ([]byte, error) {
-	cmd := exec.Command("./vast", args...)
+	cmd := exec.Command("vast", args...)
 	stdout, err := cmd.Output()
 	stdoutStr := string(stdout)
 	if err != nil {
