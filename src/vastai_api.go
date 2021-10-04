@@ -115,12 +115,12 @@ func callVastCli(args ...string) ([]byte, error) {
 	stdoutStr := string(stdout)
 	if err != nil {
 		log.Errorln(cmd.String())
-		log.Errorln("output: " + stdoutStr)
+		log.Errorln("output:", stdoutStr)
 		return stdout, err
 	}
 	if strings.Contains(stdoutStr, "failed with error") {
 		log.Errorln(cmd.String())
-		log.Errorln("output: " + stdoutStr)
+		log.Errorln("output:", stdoutStr)
 		return stdout, errors.New("Vast CLI call failed")
 	}
 	return stdout, nil
