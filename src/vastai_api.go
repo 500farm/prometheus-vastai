@@ -63,7 +63,7 @@ func getVastAiInfoFromApi() *VastAiApiResults {
 	result := new(VastAiApiResults)
 
 	var offers []VastAiOffer
-	if err := callVastCliJson(&offers, "search", "offers", "-n", "--storage=0", "--disable-bundling", "verified=true"); err != nil {
+	if err := callVastCliJson(&offers, "search", "offers", "-n", "--storage=0", "--disable-bundling", "verified=true", "external=false"); err != nil {
 		log.Errorln(err)
 	} else {
 		result.offers = &offers
