@@ -128,15 +128,15 @@ func callVastCli(args ...string) ([]byte, error) {
 	cmd, stdout, err := execWithTimeout("vast", args...)
 	stdoutStr := string(stdout)
 	if err != nil {
-		log.Errorln(cmd)
+		log.Errorln("Command failed:", cmd)
 		if stdoutStr != "" {
-			log.Errorln("output:", stdoutStr)
+			log.Errorln("Output:", stdoutStr)
 		}
 		return stdout, err
 	}
 	if strings.Contains(stdoutStr, "failed with error") {
-		log.Errorln(cmd)
-		log.Errorln("output:", stdoutStr)
+		log.Errorln("Command failed:", cmd)
+		log.Errorln("Output:", stdoutStr)
 		return stdout, errors.New("Vast CLI call failed")
 	}
 	return stdout, nil
