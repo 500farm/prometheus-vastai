@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/prometheus/common/log"
 )
@@ -109,17 +112,30 @@ func setVastAiApiKey(key string) error {
 	return err
 }
 
-func callVastCli(args ...string) ([]byte, error) {
-	cmd := exec.Command("vast", args...)
+func execWithTimeout(arg0 string, args ...string) (string, []byte, error) {
+	timeout := 60 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, arg0, args...)
 	stdout, err := cmd.Output()
+	if ctx.Err() == context.DeadlineExceeded {
+		return cmd.String(), nil, fmt.Errorf("Exec timeout (%v)", timeout)
+	}
+	return cmd.String(), stdout, err
+}
+
+func callVastCli(args ...string) ([]byte, error) {
+	cmd, stdout, err := execWithTimeout("vast", args...)
 	stdoutStr := string(stdout)
 	if err != nil {
-		log.Errorln(cmd.String())
-		log.Errorln("output:", stdoutStr)
+		log.Errorln(cmd)
+		if stdoutStr != "" {
+			log.Errorln("output:", stdoutStr)
+		}
 		return stdout, err
 	}
 	if strings.Contains(stdoutStr, "failed with error") {
-		log.Errorln(cmd.String())
+		log.Errorln(cmd)
 		log.Errorln("output:", stdoutStr)
 		return stdout, errors.New("Vast CLI call failed")
 	}
