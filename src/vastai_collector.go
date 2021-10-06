@@ -407,6 +407,6 @@ func (e *VastAiCollector) InitialUpdateFrom(info *VastAiApiResults) error {
 
 	e.UpdateFrom(info)
 
-	log.Infoln(len(*info.offers), "offers,", len(*info.myMachines), "machines, ", len(*info.myInstances), "instances, payouts:", *info.payouts)
+	log.Infoln(len(*info.offers), "offers,", len(*info.myMachines), "machines,", len(*info.myInstances), "instances, payouts:", *info.payouts)
 	return nil
 }
