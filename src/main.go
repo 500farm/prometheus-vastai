@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -24,6 +25,10 @@ var (
 		"update-interval",
 		"How often to query Vast.ai for updates",
 	).Default("1m").Duration()
+	stateDir = kingpin.Flag(
+		"state-dir",
+		"Path to store state files (default $HOME)",
+	).String()
 )
 
 func metricsHandler(w http.ResponseWriter, r *http.Request, vastAiCollector *VastAiCollector) {
@@ -39,6 +44,13 @@ func main() {
 	kingpin.Parse()
 
 	log.Infoln("Starting vast.ai exporter")
+
+	if *stateDir == "" {
+		*stateDir = os.Getenv("HOME")
+	}
+	if *stateDir == "" {
+		*stateDir = "/tmp"
+	}
 
 	if err := setVastAiApiKey(*apiKey); err != nil {
 		log.Fatalln(err)

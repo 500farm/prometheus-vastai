@@ -53,9 +53,11 @@ func getPayouts() (*PayoutInfo, error) {
 }
 
 func readLastPayouts() *PayoutInfo {
-	j, err := ioutil.ReadFile(os.Getenv("HOME") + "/.vastai_last_payouts")
+	j, err := ioutil.ReadFile(*stateDir + "/.vastai_last_payouts")
 	if err != nil {
-		log.Errorln(err)
+		if !os.IsNotExist(err) {
+			log.Errorln(err)
+		}
 		return nil
 	}
 	var payouts PayoutInfo
@@ -69,7 +71,7 @@ func readLastPayouts() *PayoutInfo {
 
 func storeLastPayouts(payouts *PayoutInfo) {
 	j, _ := json.Marshal(payouts)
-	err := ioutil.WriteFile(os.Getenv("HOME")+"/.vastai_last_payouts", j, 0600)
+	err := ioutil.WriteFile(*stateDir+"/.vastai_last_payouts", j, 0600)
 	if err != nil {
 		log.Errorln(err)
 	}

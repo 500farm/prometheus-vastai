@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -101,13 +99,6 @@ func isDefaultJob(instance *VastAiInstance) bool {
 }
 
 func setVastAiApiKey(key string) error {
-	exe, _ := os.Executable()
-	os.Chdir(filepath.Dir(exe))
-	if os.Getenv("HOME") == "" {
-		tmpHome := "/tmp/vast-control"
-		os.MkdirAll(tmpHome, 0700)
-		os.Setenv("HOME", tmpHome)
-	}
 	_, err := callVastCli("set", "api-key", key)
 	return err
 }
