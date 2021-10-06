@@ -126,11 +126,11 @@ func execWithTimeout(arg0 string, args ...string) (string, []byte, error) {
 
 func callVastCli(args ...string) ([]byte, error) {
 	cmd, stdout, err := execWithTimeout("vast", args...)
-	stdoutStr := string(stdout)
+	stdoutStr := strings.TrimSpace(string(stdout))
 	if err != nil || strings.Contains(stdoutStr, "failed with error") {
-		log.Errorln("Command failed:", cmd)
+		log.Errorln("-->", cmd)
 		if stdoutStr != "" {
-			log.Errorln("Output:", stdoutStr)
+			log.Errorln("<--", stdoutStr)
 		}
 		if err == nil {
 			err = errors.New("Vast CLI call failed")
