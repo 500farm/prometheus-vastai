@@ -123,6 +123,7 @@ func vastApiCall(result interface{}, endpoint string, args url.Values) error {
 	}
 	err = json.Unmarshal(body, result)
 	if err != nil {
+		log.Errorln(string(body)[:200])
 		return err
 	}
 	return nil
