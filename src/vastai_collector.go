@@ -26,6 +26,7 @@ type VastAiCollector struct {
 	pending_payout_dollars                 prometheus.Gauge
 	paid_out_dollars                       prometheus.Gauge
 
+	machine_info        *prometheus.GaugeVec
 	machine_is_verified *prometheus.GaugeVec
 	machine_is_listed   *prometheus.GaugeVec
 	machine_is_online   *prometheus.GaugeVec
@@ -36,6 +37,7 @@ type VastAiCollector struct {
 	machine_gpu_count                      *prometheus.GaugeVec
 	machine_rentals_count                  *prometheus.GaugeVec
 
+	instance_info                    *prometheus.GaugeVec
 	instance_is_running              *prometheus.GaugeVec
 	instance_my_bid_per_gpu_dollars  *prometheus.GaugeVec
 	instance_min_bid_per_gpu_dollars *prometheus.GaugeVec
@@ -47,12 +49,8 @@ type VastAiCollector struct {
 func newVastAiCollector() (*VastAiCollector, error) {
 	namespace := "vastai"
 
-	gpuLabelNames := []string{"gpu_name"}
-	machineLabelNames := []string{"id", "hostname"}
-	machineLabelNamesGpu := append(append([]string{}, machineLabelNames...), "gpu_name")
-	machineLabelNamesInet := append(append([]string{}, machineLabelNames...), "direction")
-	machineLabelNamesRentals := append(append([]string{}, machineLabelNamesGpu...), "rental_type", "rental_status")
-	instanceLabelNames := []string{"id", "machine_id", "docker_image", "rental_type", "gpu_name"}
+	instanceLabelNames := []string{"instance_id", "machine_id", "rental_type"}
+	instanceInfoLabelNamess := append(append([]string{}, instanceLabelNames...), "docker_image", "gpu_name")
 
 	return &VastAiCollector{
 		knownInstances: make(instanceInfoMap),
@@ -62,17 +60,18 @@ func newVastAiCollector() (*VastAiCollector, error) {
 			Namespace: namespace,
 			Name:      "ondemand_price_median_dollars",
 			Help:      "Median on-demand price among verified GPUs",
-		}, gpuLabelNames),
+		}, []string{"gpu_name"}),
 		ondemand_price_10th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_10th_percentile_dollars",
 			Help:      "10th percentile of on-demand prices among verified GPUs",
-		}, gpuLabelNames),
+		}, []string{"gpu_name"}),
 		ondemand_price_90th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_90th_percentile_dollars",
 			Help:      "90th percentile of on-demand prices among verified GPUs",
-		}, gpuLabelNames),
+		}, []string{"gpu_name"}),
+
 		pending_payout_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "pending_payout_dollars",
@@ -84,47 +83,59 @@ func newVastAiCollector() (*VastAiCollector, error) {
 			Help:      "All-time paid out amount (minus service fees)",
 		}),
 
+		machine_info: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "machine_info",
+			Help:      "Machine info",
+		}, []string{"machine_id", "gpu_name", "hostname"}),
+
 		machine_is_verified: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_is_verified",
 			Help:      "Is machine verified (1) or not (0)",
-		}, machineLabelNames),
+		}, []string{"machine_id"}),
 		machine_is_listed: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_is_listed",
 			Help:      "Is machine listed (1) or not (0)",
-		}, machineLabelNames),
+		}, []string{"machine_id"}),
 		machine_is_online: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_is_online",
 			Help:      "Is machine online (1) or not (0)",
-		}, machineLabelNames),
+		}, []string{"machine_id"}),
 		machine_reliability: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_reliability",
 			Help:      "Reliability indicator (0.0-1.0)",
-		}, machineLabelNames),
+		}, []string{"machine_id"}),
 		machine_inet_bps: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_inet_bps",
 			Help:      "Measured internet speed, download or upload (direction = 'up'/'down')",
-		}, machineLabelNamesInet),
+		}, []string{"machine_id", "direction"}),
 
 		machine_ondemand_price_per_gpu_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_ondemand_price_per_gpu_dollars",
 			Help:      "Machine on-demand price per GPU/hour",
-		}, machineLabelNamesGpu),
+		}, []string{"machine_id"}),
 		machine_gpu_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_gpu_count",
 			Help:      "Number of GPUs",
-		}, machineLabelNamesGpu),
+		}, []string{"machine_id"}),
 		machine_rentals_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_rentals_count",
 			Help:      "Count of current rentals (rental_type = 'ondemand'/'bid'/'default', rental_status = 'running'/'stopped')",
-		}, machineLabelNamesRentals),
+		}, []string{"machine_id", "rental_type", "rental_status"}),
+
+		instance_info: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "instance_info",
+			Help:      "Instance info",
+		}, instanceInfoLabelNamess),
 
 		instance_is_running: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -166,6 +177,7 @@ func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.pending_payout_dollars.Desc()
 	ch <- e.paid_out_dollars.Desc()
 
+	e.machine_info.Describe(ch)
 	e.machine_is_verified.Describe(ch)
 	e.machine_is_listed.Describe(ch)
 	e.machine_is_online.Describe(ch)
@@ -176,6 +188,7 @@ func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.machine_gpu_count.Describe(ch)
 	e.machine_rentals_count.Describe(ch)
 
+	e.instance_info.Describe(ch)
 	e.instance_is_running.Describe(ch)
 	e.instance_my_bid_per_gpu_dollars.Describe(ch)
 	e.instance_min_bid_per_gpu_dollars.Describe(ch)
@@ -191,6 +204,7 @@ func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- e.pending_payout_dollars
 	ch <- e.paid_out_dollars
 
+	e.machine_info.Collect(ch)
 	e.machine_is_verified.Collect(ch)
 	e.machine_is_listed.Collect(ch)
 	e.machine_is_online.Collect(ch)
@@ -201,6 +215,7 @@ func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
 	e.machine_gpu_count.Collect(ch)
 	e.machine_rentals_count.Collect(ch)
 
+	e.instance_info.Collect(ch)
 	e.instance_is_running.Collect(ch)
 	e.instance_my_bid_per_gpu_dollars.Collect(ch)
 	e.instance_min_bid_per_gpu_dollars.Collect(ch)
@@ -254,10 +269,13 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 	{
 		for _, machine := range *info.myMachines {
 			labels := prometheus.Labels{
-				"id":       strconv.Itoa(machine.Id),
-				"hostname": machine.Hostname,
+				"machine_id": strconv.Itoa(machine.Id),
 			}
 
+			e.machine_info.
+				MustCurryWith(labels).
+				With(prometheus.Labels{"hostname": machine.Hostname, "gpu_name": machine.GpuName}).
+				Set(1.0)
 			e.machine_is_verified.With(labels).Set(boolToFloat(machine.Verification == "verified"))
 			e.machine_is_listed.With(labels).Set(boolToFloat(machine.Listed))
 			e.machine_is_online.With(labels).Set(boolToFloat(machine.Timeout == 0))
@@ -269,7 +287,6 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 			t.With(prometheus.Labels{"direction": "down"}).Set(machine.InetDown * 1e6)
 
 			//
-			labels["gpu_name"] = machine.GpuName
 			e.machine_ondemand_price_per_gpu_dollars.With(labels).Set(machine.ListedGpuCost)
 			e.machine_gpu_count.With(labels).Set(float64(machine.NumGpus))
 
@@ -333,13 +350,18 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 					rentalType = "bid"
 				}
 				labels := prometheus.Labels{
-					"id":           strconv.Itoa(instance.Id),
-					"machine_id":   strconv.Itoa(instance.MachineId),
-					"docker_image": instance.ImageUuid,
-					"rental_type":  rentalType,
-					"gpu_name":     instance.GpuName,
+					"instance_id": strconv.Itoa(instance.Id),
+					"machine_id":  strconv.Itoa(instance.MachineId),
+					"rental_type": rentalType,
 				}
 
+				e.instance_info.
+					MustCurryWith(labels).
+					With(prometheus.Labels{
+						"docker_image": instance.ImageUuid,
+						"gpu_name":     instance.GpuName,
+					}).
+					Set(1.0)
 				e.instance_is_running.With(labels).Set(boolToFloat(instance.ActualStatus == "running"))
 				e.instance_my_bid_per_gpu_dollars.With(labels).Set(instance.DphBase)
 				e.instance_min_bid_per_gpu_dollars.With(labels).Set(instance.MinBid)
