@@ -47,7 +47,7 @@ type VastAiCollector struct {
 	instance_gpu_fraction            *prometheus.GaugeVec
 }
 
-func newVastAiCollector() (*VastAiCollector, error) {
+func newVastAiCollector() *VastAiCollector {
 	namespace := "vastai"
 
 	instanceLabelNames := []string{"instance_id", "machine_id", "rental_type"}
@@ -173,7 +173,7 @@ func newVastAiCollector() (*VastAiCollector, error) {
 			Name:      "instance_gpu_fraction",
 			Help:      "Number of GPUs assigned to this instance divided by total number of GPUs on the host",
 		}, instanceLabelNames),
-	}, nil
+	}
 }
 
 func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {

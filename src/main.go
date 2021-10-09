@@ -31,7 +31,7 @@ var (
 	).String()
 )
 
-func metricsHandler(w http.ResponseWriter, r *http.Request, vastAiCollector *VastAiCollector) {
+func metricsHandler(w http.ResponseWriter, r *http.Request, vastAiCollector prometheus.Collector) {
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(vastAiCollector)
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
@@ -52,16 +52,24 @@ func main() {
 		*stateDir = "/tmp"
 	}
 
-	vastAiCollector, _ := newVastAiCollector()
+	vastAiCollector := newVastAiCollector()
 	log.Infoln("Reading initial Vast.ai info")
-	err := vastAiCollector.InitialUpdateFrom(getVastAiInfoFromApi())
+	info := getVastAiInfoFromApi()
+	err := vastAiCollector.InitialUpdateFrom(info)
 	if err != nil {
 		// initial update must succeed, otherwise exit
 		log.Fatalln(err)
 	}
 
+	// additional collector for /metrics-allgpus
+	vastAiCollectorAllGpus := newVastAiCollectorAllGpus()
+	vastAiCollectorAllGpus.UpdateFrom(info)
+
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		metricsHandler(w, r, vastAiCollector)
+	})
+	http.HandleFunc("/metrics/allgpus", func(w http.ResponseWriter, r *http.Request) {
+		metricsHandler(w, r, vastAiCollectorAllGpus)
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
@@ -70,7 +78,8 @@ func main() {
 		</head>
 		<body>
 		<h1>Vast.ai Exporter</h1>
-		<a href="/metrics">Metrics</a>
+		<a href="/metrics">Metrics</a><br>
+		<a href="/metrics/allgpus">Site-wide stats for all GPUs</a>
 		</body>
 		</html>`))
 	})
@@ -78,7 +87,9 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(*updateInterval)
-			vastAiCollector.UpdateFrom(getVastAiInfoFromApi())
+			info := getVastAiInfoFromApi()
+			vastAiCollector.UpdateFrom(info)
+			vastAiCollectorAllGpus.UpdateFrom(info)
 		}
 	}()
 
