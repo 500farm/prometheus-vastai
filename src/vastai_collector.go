@@ -61,17 +61,17 @@ func newVastAiCollector() (*VastAiCollector, error) {
 		ondemand_price_median_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_median_dollars",
-			Help:      "Median on-demand price among verified GPUs with top DLPerf",
+			Help:      "Median on-demand price among verified GPUs",
 		}, gpuLabelNames),
 		ondemand_price_10th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_10th_percentile_dollars",
-			Help:      "10th percentile of on-demand prices among verified GPUs with top DLPerf",
+			Help:      "10th percentile of on-demand prices among verified GPUs",
 		}, gpuLabelNames),
 		ondemand_price_90th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_90th_percentile_dollars",
-			Help:      "90th percentile of on-demand prices among verified GPUs with top DLPerf",
+			Help:      "90th percentile of on-demand prices among verified GPUs",
 		}, gpuLabelNames),
 		pending_payout_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -226,22 +226,10 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 	// process offers
 	if info.offers != nil {
 		for _, gpuName := range myGpus {
-			// Find the highest DLPerf for this kind of GPU. Then, use it ignore offers with DLPerf too low compared to the highest.
-			topDlPerf := float64(0)
-			for _, offer := range *info.offers {
-				if offer.GpuName == gpuName && offer.GpuFrac == 1 {
-					dlPerf := offer.DlPerf / float64(offer.NumGpus)
-					if dlPerf > topDlPerf {
-						topDlPerf = dlPerf
-					}
-				}
-			}
-
 			prices := []float64{}
 			for _, offer := range *info.offers {
 				if offer.GpuName == gpuName &&
 					offer.GpuFrac == 1 &&
-					offer.DlPerf/float64(offer.NumGpus) >= topDlPerf*0.80 &&
 					!isMyMachineId[offer.MachineId] {
 					prices = append(prices, offer.DphBase/float64(offer.NumGpus))
 				}

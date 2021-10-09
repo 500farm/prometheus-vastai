@@ -153,15 +153,15 @@ vastai_machine_rentals_count{gpu_name="RTX 3080",hostname="rig2.local",id="3100"
 vastai_machine_rentals_count{gpu_name="RTX 3080",hostname="rig2.local",id="3100",rental_status="stopped",rental_type="my"} 0
 vastai_machine_rentals_count{gpu_name="RTX 3080",hostname="rig2.local",id="3100",rental_status="stopped",rental_type="ondemand"} 6
 
-# HELP vastai_ondemand_price_10th_percentile_dollars 10th percentile of on-demand prices among verified GPUs with top DLPerf
+# HELP vastai_ondemand_price_10th_percentile_dollars 10th percentile of on-demand prices among verified GPUs
 # TYPE vastai_ondemand_price_10th_percentile_dollars gauge
 vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080"} 0.3
 
-# HELP vastai_ondemand_price_90th_percentile_dollars 90th percentile of on-demand prices among verified GPUs with top DLPerf
+# HELP vastai_ondemand_price_90th_percentile_dollars 90th percentile of on-demand prices among verified GPUs
 # TYPE vastai_ondemand_price_90th_percentile_dollars gauge
 vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080"} 0.4
 
-# HELP vastai_ondemand_price_median_dollars Median on-demand price among verified GPUs with top DLPerf
+# HELP vastai_ondemand_price_median_dollars Median on-demand price among verified GPUs
 # TYPE vastai_ondemand_price_median_dollars gauge
 vastai_ondemand_price_median_dollars{gpu_name="RTX 3080"} 0.35
 
