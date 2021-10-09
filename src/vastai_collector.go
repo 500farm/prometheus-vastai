@@ -23,6 +23,7 @@ type VastAiCollector struct {
 	ondemand_price_median_dollars          *prometheus.GaugeVec
 	ondemand_price_10th_percentile_dollars *prometheus.GaugeVec
 	ondemand_price_90th_percentile_dollars *prometheus.GaugeVec
+	gpu_count                              *prometheus.GaugeVec
 	pending_payout_dollars                 prometheus.Gauge
 	paid_out_dollars                       prometheus.Gauge
 
@@ -59,17 +60,22 @@ func newVastAiCollector() (*VastAiCollector, error) {
 		ondemand_price_median_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_median_dollars",
-			Help:      "Median on-demand price among verified GPUs",
+			Help:      "Median on-demand price among verified GPUs (excluding yours)",
 		}, []string{"gpu_name"}),
 		ondemand_price_10th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_10th_percentile_dollars",
-			Help:      "10th percentile of on-demand prices among verified GPUs",
+			Help:      "10th percentile of on-demand prices among verified GPUs (excluding yours)",
 		}, []string{"gpu_name"}),
 		ondemand_price_90th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_90th_percentile_dollars",
-			Help:      "90th percentile of on-demand prices among verified GPUs",
+			Help:      "90th percentile of on-demand prices among verified GPU (excluding yours)",
+		}, []string{"gpu_name"}),
+		gpu_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "gpu_count",
+			Help:      "Number of GPUs offered on site (excluding yours)",
 		}, []string{"gpu_name"}),
 
 		pending_payout_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
@@ -174,6 +180,7 @@ func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.ondemand_price_median_dollars.Describe(ch)
 	e.ondemand_price_10th_percentile_dollars.Describe(ch)
 	e.ondemand_price_90th_percentile_dollars.Describe(ch)
+	e.gpu_count.Describe(ch)
 	ch <- e.pending_payout_dollars.Desc()
 	ch <- e.paid_out_dollars.Desc()
 
@@ -201,6 +208,7 @@ func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
 	e.ondemand_price_median_dollars.Collect(ch)
 	e.ondemand_price_10th_percentile_dollars.Collect(ch)
 	e.ondemand_price_90th_percentile_dollars.Collect(ch)
+	e.gpu_count.Collect(ch)
 	ch <- e.pending_payout_dollars
 	ch <- e.paid_out_dollars
 
@@ -253,11 +261,11 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 				}
 			}
 
+			labels := prometheus.Labels{
+				"gpu_name": gpuName,
+			}
+			e.gpu_count.With(labels).Set(float64(len(prices)))
 			if len(prices) > 0 {
-				labels := prometheus.Labels{
-					"gpu_name": gpuName,
-				}
-
 				median, _ := stats.Median(prices)
 				e.ondemand_price_median_dollars.With(labels).Set(median)
 				percentileLow, _ := stats.Percentile(prices, 10)
