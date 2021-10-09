@@ -246,7 +246,10 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 				if offer.GpuName == gpuName &&
 					offer.GpuFrac == 1 &&
 					!isMyMachineId[offer.MachineId] {
-					prices = append(prices, offer.DphBase/float64(offer.NumGpus))
+					pricePerGpu := offer.DphBase / float64(offer.NumGpus)
+					for i := 0; i < offer.NumGpus; i++ {
+						prices = append(prices, pricePerGpu)
+					}
 				}
 			}
 
