@@ -52,10 +52,6 @@ func main() {
 		*stateDir = "/tmp"
 	}
 
-	if err := setVastAiApiKey(*apiKey); err != nil {
-		log.Fatalln(err)
-	}
-
 	vastAiCollector, _ := newVastAiCollector()
 	log.Infoln("Reading initial Vast.ai info")
 	err := vastAiCollector.InitialUpdateFrom(getVastAiInfoFromApi())

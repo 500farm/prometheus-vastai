@@ -1,13 +1,10 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
-	"os/exec"
-	"strings"
-	"time"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 
 	"github.com/prometheus/common/log"
 )
@@ -63,25 +60,37 @@ type VastAiInstance struct {
 func getVastAiInfoFromApi() *VastAiApiResults {
 	result := new(VastAiApiResults)
 
-	var offers []VastAiOffer
-	if err := callVastCliJson(&offers, "search", "offers", "-n", "--storage=0", "--disable-bundling", "verified=true", "external=false"); err != nil {
+	var response struct {
+		Offers []VastAiOffer `json:"offers"`
+	}
+	if err := vastApiCall(&response, "bundles", url.Values{
+		"q": {`{"external":{"eq":"false"},"verified":{"eq":"true"},"type":"on-demand","disable_bundling":true}`},
+	}); err != nil {
 		log.Errorln(err)
 	} else {
-		result.offers = &offers
+		result.offers = &response.Offers
 	}
 
-	var myMachines []VastAiMachine
-	if err := callVastCliJson(&myMachines, "show", "machines"); err != nil {
-		log.Errorln(err)
-	} else {
-		result.myMachines = &myMachines
+	{
+		var response struct {
+			Machines []VastAiMachine `json:"machines"`
+		}
+		if err := vastApiCall(&response, "machines", nil); err != nil {
+			log.Errorln(err)
+		} else {
+			result.myMachines = &response.Machines
+		}
 	}
 
-	var myInstances []VastAiInstance
-	if err := callVastCliJson(&myInstances, "show", "instances"); err != nil {
-		log.Errorln(err)
-	} else {
-		result.myInstances = &myInstances
+	{
+		var response struct {
+			Instances []VastAiInstance `json:"instances"`
+		}
+		if err := vastApiCall(&response, "instances", nil); err != nil {
+			log.Errorln(err)
+		} else {
+			result.myInstances = &response.Instances
+		}
 	}
 
 	payouts, err := getPayouts()
@@ -98,47 +107,23 @@ func isDefaultJob(instance *VastAiInstance) bool {
 	return instance.BundleId == nil
 }
 
-func setVastAiApiKey(key string) error {
-	_, err := callVastCli("set", "api-key", key)
-	return err
-}
-
-func execWithTimeout(arg0 string, args ...string) (string, []byte, error) {
-	timeout := 60 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, arg0, args...)
-	stdout, err := cmd.Output()
-	if ctx.Err() == context.DeadlineExceeded {
-		return cmd.String(), nil, fmt.Errorf("Exec timeout (%v)", timeout)
+func vastApiCall(result interface{}, endpoint string, args url.Values) error {
+	if args == nil {
+		args = make(url.Values)
 	}
-	return cmd.String(), stdout, err
-}
-
-func callVastCli(args ...string) ([]byte, error) {
-	cmd, stdout, err := execWithTimeout("vast", args...)
-	stdoutStr := strings.TrimSpace(string(stdout))
-	if err != nil || strings.Contains(stdoutStr, "failed with error") {
-		log.Errorln("-->", cmd)
-		if stdoutStr != "" {
-			log.Errorln("<--", stdoutStr)
-		}
-		if err == nil {
-			err = errors.New("Vast CLI call failed")
-		}
-		return stdout, err
-	}
-	return stdout, nil
-}
-
-func callVastCliJson(result interface{}, args ...string) error {
-	output, err := callVastCli(append(args, "--raw")...)
+	args.Set("api_key", *apiKey)
+	resp, err := http.Get("https://vast.ai/api/v0/" + endpoint + "/?" + args.Encode())
 	if err != nil {
 		return err
 	}
-	err1 := json.Unmarshal(output, result)
-	if err1 != nil {
-		return err1
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(body, result)
+	if err != nil {
+		return err
 	}
 	return nil
 }

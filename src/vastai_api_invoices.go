@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"strconv"
 
@@ -27,16 +26,7 @@ type PayoutInfo struct {
 
 func getPayouts() (*PayoutInfo, error) {
 	var data VastAiInvoices
-	resp, err := http.Get("https://vast.ai/api/v0/users/current/invoices/?api_key=" + *apiKey)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(body, &data)
+	err := vastApiCall(&data, "users/current/invoices", nil)
 	if err != nil {
 		return nil, err
 	}
