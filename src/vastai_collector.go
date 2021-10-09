@@ -254,10 +254,10 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 
 				median, _ := stats.Median(prices)
 				e.ondemand_price_median_dollars.With(labels).Set(median)
-				percentile20, _ := stats.Percentile(prices, 20)
-				e.ondemand_price_10th_percentile_dollars.With(labels).Set(percentile20)
-				percentile80, _ := stats.Percentile(prices, 80)
-				e.ondemand_price_90th_percentile_dollars.With(labels).Set(percentile80)
+				percentileLow, _ := stats.Percentile(prices, 10)
+				e.ondemand_price_10th_percentile_dollars.With(labels).Set(percentileLow)
+				percentileHigh, _ := stats.Percentile(prices, 90)
+				e.ondemand_price_90th_percentile_dollars.With(labels).Set(percentileHigh)
 			}
 		}
 	}
