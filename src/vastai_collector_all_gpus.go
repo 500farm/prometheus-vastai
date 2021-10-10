@@ -60,12 +60,11 @@ func (e *VastAiCollectorAllGpus) UpdateFrom(info VastAiApiResults) {
 		return
 	}
 
-	groupedOffers := groupOffersByGpuName(filterOffers(
-		*info.offers,
+	groupedOffers := info.offers.filter(
 		func(offer *VastAiOffer) bool {
 			return offer.GpuFrac == 1
 		},
-	))
+	).groupByGpu()
 
 	updateMetrics := func(labels prometheus.Labels, stats OfferStats) {
 		e.gpu_count.With(labels).Set(float64(stats.Count))
@@ -84,7 +83,7 @@ func (e *VastAiCollectorAllGpus) UpdateFrom(info VastAiApiResults) {
 	}
 
 	for gpuName, offers := range groupedOffers {
-		stats := offerStats2(offers)
+		stats := offers.stats2()
 		updateMetrics(
 			prometheus.Labels{"gpu_name": gpuName, "verified": "yes"},
 			stats.Verified,

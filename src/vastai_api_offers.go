@@ -10,6 +10,7 @@ import (
 )
 
 type VastAiRawOffer map[string]interface{}
+type VastAiRawOffers []VastAiRawOffer
 
 type VastAiOffer struct {
 	MachineId int
@@ -19,8 +20,9 @@ type VastAiOffer struct {
 	DphBase   float64
 	Verified  bool
 }
+type VastAiOffers []VastAiOffer
 
-type GroupedOffers map[string][]VastAiOffer
+type GroupedOffers map[string]VastAiOffers
 
 type OfferStats struct {
 	Count                                 int
@@ -33,7 +35,7 @@ type OfferStats2 struct {
 
 func loadOffers(result *VastAiApiResults) error {
 	var verified, unverified struct {
-		Offers []VastAiRawOffer `json:"offers"`
+		Offers VastAiRawOffers `json:"offers"`
 	}
 	if err := vastApiCall(&verified, "bundles", url.Values{
 		"q": {`{"external":{"eq":"false"},"verified":{"eq":"true"},"type":"on-demand","disable_bundling":true}`},
@@ -46,13 +48,13 @@ func loadOffers(result *VastAiApiResults) error {
 		return err
 	}
 	rawOffers := mergeRawOffers(verified.Offers, unverified.Offers)
-	offers := rawOffersToOffers(rawOffers)
+	offers := rawOffers.decode()
 	result.rawOffers = &rawOffers
 	result.offers = &offers
 	return nil
 }
 
-func mergeRawOffers(verified []VastAiRawOffer, unverified []VastAiRawOffer) []VastAiRawOffer {
+func mergeRawOffers(verified VastAiRawOffers, unverified VastAiRawOffers) VastAiRawOffers {
 	result := []VastAiRawOffer{}
 	for _, offer := range verified {
 		offer["verified"] = true
@@ -65,8 +67,8 @@ func mergeRawOffers(verified []VastAiRawOffer, unverified []VastAiRawOffer) []Va
 	return result
 }
 
-func rawOffersToOffers(offers []VastAiRawOffer) []VastAiOffer {
-	result := []VastAiOffer{}
+func (offers VastAiRawOffers) decode() VastAiOffers {
+	result := VastAiOffers{}
 	for _, offer := range offers {
 		result = append(result, VastAiOffer{
 			MachineId: int(offer["machine_id"].(float64)),
@@ -80,8 +82,8 @@ func rawOffersToOffers(offers []VastAiRawOffer) []VastAiOffer {
 	return result
 }
 
-func groupOffersByGpuName(offers []VastAiOffer) GroupedOffers {
-	offersByGpu := make(map[string][]VastAiOffer)
+func (offers VastAiOffers) groupByGpu() GroupedOffers {
+	offersByGpu := make(GroupedOffers)
 	for _, offer := range offers {
 		name := offer.GpuName
 		offersByGpu[name] = append(offersByGpu[name], offer)
@@ -89,7 +91,7 @@ func groupOffersByGpuName(offers []VastAiOffer) GroupedOffers {
 	return offersByGpu
 }
 
-func filterOffers(offers []VastAiOffer, filter func(*VastAiOffer) bool) []VastAiOffer {
+func (offers VastAiOffers) filter(filter func(*VastAiOffer) bool) VastAiOffers {
 	result := []VastAiOffer{}
 	for _, offer := range offers {
 		if filter(&offer) {
@@ -99,7 +101,7 @@ func filterOffers(offers []VastAiOffer, filter func(*VastAiOffer) bool) []VastAi
 	return result
 }
 
-func offerStats(offers []VastAiOffer) OfferStats {
+func (offers VastAiOffers) stats() OfferStats {
 	prices := []float64{}
 	for _, offer := range offers {
 		pricePerGpu := offer.DphBase / float64(offer.NumGpus)
@@ -122,15 +124,15 @@ func offerStats(offers []VastAiOffer) OfferStats {
 	return result
 }
 
-func offerStats2(offers []VastAiOffer) OfferStats2 {
+func (offers VastAiOffers) stats2() OfferStats2 {
 	return OfferStats2{
-		Verified:   offerStats(filterOffers(offers, func(offer *VastAiOffer) bool { return offer.Verified })),
-		Unverified: offerStats(filterOffers(offers, func(offer *VastAiOffer) bool { return !offer.Verified })),
-		All:        offerStats(offers),
+		Verified:   offers.filter(func(offer *VastAiOffer) bool { return offer.Verified }).stats(),
+		Unverified: offers.filter(func(offer *VastAiOffer) bool { return !offer.Verified }).stats(),
+		All:        offers.stats(),
 	}
 }
 
-func rawOffersToJson(offers *[]VastAiRawOffer) []byte {
+func (offers VastAiRawOffers) json() []byte {
 	result, err := json.Marshal(offers)
 	if err != nil {
 		log.Errorln(err)

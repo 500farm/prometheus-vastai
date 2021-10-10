@@ -14,8 +14,8 @@ import (
 )
 
 type VastAiApiResults struct {
-	offers      *[]VastAiOffer
-	rawOffers   *[]VastAiRawOffer
+	offers      *VastAiOffers
+	rawOffers   *VastAiRawOffers
 	myMachines  *[]VastAiMachine
 	myInstances *[]VastAiInstance
 	payouts     *PayoutInfo

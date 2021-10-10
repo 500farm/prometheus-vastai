@@ -73,7 +73,7 @@ func main() {
 	})
 	http.HandleFunc("/raw-offers", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(rawOffersToJson(info.rawOffers))
+		w.Write(info.rawOffers.json())
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
