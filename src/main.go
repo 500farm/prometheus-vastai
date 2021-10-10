@@ -68,7 +68,7 @@ func main() {
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		metricsHandler(w, r, vastAiCollector)
 	})
-	http.HandleFunc("/metrics/allgpus", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/metrics/all-gpus", func(w http.ResponseWriter, r *http.Request) {
 		metricsHandler(w, r, vastAiCollectorAllGpus)
 	})
 	http.HandleFunc("/raw-offers", func(w http.ResponseWriter, r *http.Request) {
@@ -83,7 +83,7 @@ func main() {
 		<body>
 		<h1>Vast.ai Exporter</h1>
 		<a href="/metrics">Metrics</a><br>
-		<a href="/metrics/allgpus">Site-wide stats for all GPUs</a>
+		<a href="/metrics/all-gpus">Site-wide stats for all GPUs</a><br>
 		</body>
 		</html>`))
 	})
