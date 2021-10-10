@@ -1,6 +1,8 @@
 package main
 
 import (
+	"math"
+
 	"github.com/montanaflynn/stats"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -85,9 +87,14 @@ func (e *VastAiCollectorAllGpus) UpdateFrom(info *VastAiApiResults) {
 			median, _ := stats.Median(prices)
 			e.ondemand_price_median_dollars.With(labels).Set(median)
 			percentileLow, _ := stats.Percentile(prices, 10)
-			e.ondemand_price_10th_percentile_dollars.With(labels).Set(percentileLow)
 			percentileHigh, _ := stats.Percentile(prices, 90)
-			e.ondemand_price_90th_percentile_dollars.With(labels).Set(percentileHigh)
+			if !math.IsNaN(percentileHigh) && !math.IsNaN(percentileLow) {
+				e.ondemand_price_10th_percentile_dollars.With(labels).Set(percentileLow)
+				e.ondemand_price_90th_percentile_dollars.With(labels).Set(percentileHigh)
+			} else {
+				e.ondemand_price_10th_percentile_dollars.Delete(labels)
+				e.ondemand_price_90th_percentile_dollars.Delete(labels)
+			}
 		}
 	}
 }
