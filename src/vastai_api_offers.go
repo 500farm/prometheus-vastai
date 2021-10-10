@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"net/url"
 
 	"github.com/montanaflynn/stats"
 )
@@ -11,7 +12,6 @@ type VastAiOffer struct {
 	GpuName   string  `json:"gpu_name"`
 	NumGpus   int     `json:"num_gpus"`
 	GpuFrac   float64 `json:"gpu_frac"`
-	DlPerf    float64 `json:"dlperf"`
 	DphBase   float64 `json:"dph_base"`
 	Verified  bool
 }
@@ -25,6 +25,25 @@ type OfferStats struct {
 
 type OfferStats2 struct {
 	Verified, Unverified, All OfferStats
+}
+
+func loadOffers(result *VastAiApiResults) error {
+	var verified, unverified struct {
+		Offers []VastAiOffer `json:"offers"`
+	}
+	if err := vastApiCall(&verified, "bundles", url.Values{
+		"q": {`{"external":{"eq":"false"},"verified":{"eq":"true"},"type":"on-demand","disable_bundling":true}`},
+	}); err != nil {
+		return err
+	}
+	if err := vastApiCall(&unverified, "bundles", url.Values{
+		"q": {`{"external":{"eq":"false"},"verified":{"eq":"false"},"type":"on-demand","disable_bundling":true}`},
+	}); err != nil {
+		return err
+	}
+	offers := mergeOffers(verified.Offers, unverified.Offers)
+	result.offers = &offers
+	return nil
 }
 
 func mergeOffers(verified []VastAiOffer, unverified []VastAiOffer) []VastAiOffer {

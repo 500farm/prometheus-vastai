@@ -55,22 +55,8 @@ type VastAiInstance struct {
 func getVastAiInfoFromApi() VastAiApiResults {
 	result := VastAiApiResults{}
 
-	var verified, unverified struct {
-		Offers []VastAiOffer `json:"offers"`
-	}
-	if err := vastApiCall(&verified, "bundles", url.Values{
-		"q": {`{"external":{"eq":"false"},"verified":{"eq":"true"},"type":"on-demand","disable_bundling":true}`},
-	}); err != nil {
+	if err := loadOffers(&result); err != nil {
 		log.Errorln(err)
-	} else {
-		if err := vastApiCall(&unverified, "bundles", url.Values{
-			"q": {`{"external":{"eq":"false"},"verified":{"eq":"false"},"type":"on-demand","disable_bundling":true}`},
-		}); err != nil {
-			log.Errorln(err)
-		} else {
-			offers := mergeOffers(verified.Offers, unverified.Offers)
-			result.offers = &offers
-		}
 	}
 
 	{
