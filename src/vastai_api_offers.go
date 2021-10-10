@@ -53,7 +53,7 @@ func loadOffers(result *VastAiApiResults) error {
 }
 
 func mergeRawOffers(verified VastAiRawOffers, unverified VastAiRawOffers) VastAiRawOffers {
-	result := []VastAiRawOffer{}
+	result := VastAiRawOffers{}
 	for _, offer := range verified {
 		offer["verified"] = true
 		result = append(result, offer)
@@ -90,7 +90,7 @@ func (offers VastAiOffers) groupByGpu() GroupedOffers {
 }
 
 func (offers VastAiOffers) filter(filter func(*VastAiOffer) bool) VastAiOffers {
-	result := []VastAiOffer{}
+	result := VastAiOffers{}
 	for _, offer := range offers {
 		if filter(&offer) {
 			result = append(result, offer)
