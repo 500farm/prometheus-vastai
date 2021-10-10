@@ -3,7 +3,6 @@ package main
 import (
 	"math"
 
-	"github.com/montanaflynn/stats"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -60,45 +59,27 @@ func (e *VastAiCollectorAllGpus) UpdateFrom(info *VastAiApiResults) {
 		return
 	}
 
-	// group offers by gpu name
-	offersByGpu := make(map[string][]VastAiOffer)
-	for _, offer := range *info.offers {
-		name := offer.GpuName
-		offersByGpu[name] = append(offersByGpu[name], offer)
-	}
+	groupedOffers := groupOffersByGpuName(filterOffers(
+		*info.offers,
+		func(offer *VastAiOffer) bool {
+			return offer.GpuFrac == 1
+		},
+	))
 
-	// process offers
-	for gpuName, offers := range offersByGpu {
-		prices := []float64{}
-		for _, offer := range offers {
-			if offer.GpuFrac == 1 {
-				pricePerGpu := offer.DphBase / float64(offer.NumGpus)
-				for i := 0; i < offer.NumGpus; i++ {
-					prices = append(prices, pricePerGpu)
-				}
-			}
-		}
-
+	for gpuName, offers := range groupedOffers {
+		stats := offerStats(offers)
 		labels := prometheus.Labels{
 			"gpu_name": gpuName,
 		}
-		e.gpu_count.With(labels).Set(float64(len(prices)))
-		median := math.NaN()
-		percentileLow := math.NaN()
-		percentileHigh := math.NaN()
-		if len(prices) > 0 {
-			median, _ = stats.Median(prices)
-			percentileLow, _ = stats.Percentile(prices, 10)
-			percentileHigh, _ = stats.Percentile(prices, 90)
-		}
-		if !math.IsNaN(median) {
-			e.ondemand_price_median_dollars.With(labels).Set(median)
+		e.gpu_count.With(labels).Set(float64(stats.Count))
+		if !math.IsNaN(stats.Median) {
+			e.ondemand_price_median_dollars.With(labels).Set(stats.Median)
 		} else {
 			e.ondemand_price_median_dollars.Delete(labels)
 		}
-		if !math.IsNaN(percentileLow) && !math.IsNaN(percentileHigh) {
-			e.ondemand_price_10th_percentile_dollars.With(labels).Set(percentileLow)
-			e.ondemand_price_90th_percentile_dollars.With(labels).Set(percentileHigh)
+		if !math.IsNaN(stats.PercentileLow) && !math.IsNaN(stats.PercentileHigh) {
+			e.ondemand_price_10th_percentile_dollars.With(labels).Set(stats.PercentileLow)
+			e.ondemand_price_90th_percentile_dollars.With(labels).Set(stats.PercentileHigh)
 		} else {
 			e.ondemand_price_10th_percentile_dollars.Delete(labels)
 			e.ondemand_price_90th_percentile_dollars.Delete(labels)

@@ -19,15 +19,6 @@ type VastAiApiResults struct {
 	payouts     *PayoutInfo
 }
 
-type VastAiOffer struct {
-	MachineId int     `json:"machine_id"`
-	GpuName   string  `json:"gpu_name"`
-	NumGpus   int     `json:"num_gpus"`
-	GpuFrac   float64 `json:"gpu_frac"`
-	DlPerf    float64 `json:"dlperf"`
-	DphBase   float64 `json:"dph_base"`
-}
-
 type VastAiMachine struct {
 	Id                            int     `json:"id"`
 	Hostname                      string  `json:"hostname"`
