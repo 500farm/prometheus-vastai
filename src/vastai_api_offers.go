@@ -1,18 +1,22 @@
 package main
 
 import (
+	"encoding/json"
 	"math"
 	"net/url"
 
 	"github.com/montanaflynn/stats"
+	"github.com/prometheus/common/log"
 )
 
+type VastAiRawOffer map[string]interface{}
+
 type VastAiOffer struct {
-	MachineId int     `json:"machine_id"`
-	GpuName   string  `json:"gpu_name"`
-	NumGpus   int     `json:"num_gpus"`
-	GpuFrac   float64 `json:"gpu_frac"`
-	DphBase   float64 `json:"dph_base"`
+	MachineId int
+	GpuName   string
+	NumGpus   int
+	GpuFrac   float64
+	DphBase   float64
 	Verified  bool
 }
 
@@ -29,7 +33,7 @@ type OfferStats2 struct {
 
 func loadOffers(result *VastAiApiResults) error {
 	var verified, unverified struct {
-		Offers []VastAiOffer `json:"offers"`
+		Offers []VastAiRawOffer `json:"offers"`
 	}
 	if err := vastApiCall(&verified, "bundles", url.Values{
 		"q": {`{"external":{"eq":"false"},"verified":{"eq":"true"},"type":"on-demand","disable_bundling":true}`},
@@ -41,20 +45,37 @@ func loadOffers(result *VastAiApiResults) error {
 	}); err != nil {
 		return err
 	}
-	offers := mergeOffers(verified.Offers, unverified.Offers)
+	rawOffers := mergeRawOffers(verified.Offers, unverified.Offers)
+	offers := rawOffersToOffers(rawOffers)
+	result.rawOffers = &rawOffers
 	result.offers = &offers
 	return nil
 }
 
-func mergeOffers(verified []VastAiOffer, unverified []VastAiOffer) []VastAiOffer {
-	result := []VastAiOffer{}
+func mergeRawOffers(verified []VastAiRawOffer, unverified []VastAiRawOffer) []VastAiRawOffer {
+	result := []VastAiRawOffer{}
 	for _, offer := range verified {
-		offer.Verified = true
+		offer["verified"] = true
 		result = append(result, offer)
 	}
 	for _, offer := range unverified {
-		offer.Verified = false
+		offer["verified"] = false
 		result = append(result, offer)
+	}
+	return result
+}
+
+func rawOffersToOffers(offers []VastAiRawOffer) []VastAiOffer {
+	result := []VastAiOffer{}
+	for _, offer := range offers {
+		result = append(result, VastAiOffer{
+			MachineId: int(offer["machine_id"].(float64)),
+			GpuName:   offer["gpu_name"].(string),
+			NumGpus:   int(offer["num_gpus"].(float64)),
+			GpuFrac:   offer["gpu_frac"].(float64),
+			DphBase:   offer["dph_base"].(float64),
+			Verified:  offer["verified"].(bool),
+		})
 	}
 	return result
 }
@@ -107,4 +128,13 @@ func offerStats2(offers []VastAiOffer) OfferStats2 {
 		Unverified: offerStats(filterOffers(offers, func(offer *VastAiOffer) bool { return !offer.Verified })),
 		All:        offerStats(offers),
 	}
+}
+
+func rawOffersToJson(offers *[]VastAiRawOffer) []byte {
+	result, err := json.Marshal(offers)
+	if err != nil {
+		log.Errorln(err)
+		return nil
+	}
+	return result
 }

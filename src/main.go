@@ -71,6 +71,10 @@ func main() {
 	http.HandleFunc("/metrics/allgpus", func(w http.ResponseWriter, r *http.Request) {
 		metricsHandler(w, r, vastAiCollectorAllGpus)
 	})
+	http.HandleFunc("/raw-offers", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(rawOffersToJson(info.rawOffers))
+	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
 		<head>
