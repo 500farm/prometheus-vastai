@@ -8,4 +8,7 @@ require github.com/prometheus/common v0.17.0
 
 require gopkg.in/alecthomas/kingpin.v2 v2.2.6
 
-require github.com/montanaflynn/stats v0.6.5
+require (
+	github.com/aquilax/truncate v1.0.0
+	github.com/montanaflynn/stats v0.6.5
+)

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/aquilax/truncate"
 	"github.com/prometheus/common/log"
 )
 
@@ -123,7 +124,7 @@ func vastApiCall(result interface{}, endpoint string, args url.Values) error {
 	}
 	err = json.Unmarshal(body, result)
 	if err != nil {
-		log.Errorln(string(body)[:200])
+		log.Errorln(truncate.Truncate(string(body), 200, "...", truncate.PositionEnd))
 		return err
 	}
 	return nil
