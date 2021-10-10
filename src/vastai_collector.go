@@ -283,6 +283,7 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 	}
 
 	// process machines
+	// TODO handle disappeared machines
 	{
 		for _, machine := range *info.myMachines {
 			labels := prometheus.Labels{
