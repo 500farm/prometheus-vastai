@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/aquilax/truncate"
 	"github.com/prometheus/common/log"
@@ -122,9 +124,16 @@ func vastApiCall(result interface{}, endpoint string, args url.Values) error {
 	if err != nil {
 		return err
 	}
+	logBody := func(body []byte) {
+		log.Errorln(truncate.Truncate(strings.TrimSpace(string(body)), 200, "...", truncate.PositionEnd))
+	}
+	if resp.StatusCode != 200 {
+		logBody(body)
+		return fmt.Errorf("endpoint %s returned: %s", endpoint, resp.Status)
+	}
 	err = json.Unmarshal(body, result)
 	if err != nil {
-		log.Errorln(truncate.Truncate(string(body), 200, "...", truncate.PositionEnd))
+		logBody(body)
 		return err
 	}
 	return nil
