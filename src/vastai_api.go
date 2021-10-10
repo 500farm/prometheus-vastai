@@ -163,7 +163,7 @@ func (r *VastAiApiResults) rawOffersJson(wholeMachines bool) []byte {
 	}
 	result, err := json.MarshalIndent(RawOffersResponse{
 		Url:       url,
-		Timestamp: r.ts,
+		Timestamp: r.ts.UTC(),
 		Count:     len(*offers),
 		Offers:    offers,
 	}, "", "    ")
