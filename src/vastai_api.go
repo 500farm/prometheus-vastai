@@ -88,7 +88,7 @@ func getVastAiInfoFromApi() VastAiApiResults {
 	return result
 }
 
-func isDefaultJob(instance *VastAiInstance) bool {
+func (instance *VastAiInstance) isDefaultJob() bool {
 	return instance.BundleId == nil
 }
 

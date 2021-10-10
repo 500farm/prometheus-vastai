@@ -336,7 +336,7 @@ func (e *VastAiCollector) UpdateFrom(info VastAiApiResults) {
 
 				for _, instance := range *info.myInstances {
 					if instance.MachineId == machine.Id {
-						if isDefaultJob(&instance) {
+						if instance.isDefaultJob() {
 							if instance.ActualStatus == "running" {
 								defJobsRunning++
 							} else {
@@ -369,7 +369,7 @@ func (e *VastAiCollector) UpdateFrom(info VastAiApiResults) {
 		for _, instance := range *info.myInstances {
 			if isMyMachineId[instance.MachineId] {
 				rentalType := "ondemand"
-				if isDefaultJob(&instance) {
+				if instance.isDefaultJob() {
 					rentalType = "default"
 				} else if instance.IsBid {
 					rentalType = "bid"
