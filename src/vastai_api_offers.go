@@ -1,12 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"math"
 	"net/url"
 
 	"github.com/montanaflynn/stats"
-	"github.com/prometheus/common/log"
 )
 
 type VastAiRawOffer map[string]interface{}
@@ -130,13 +128,4 @@ func (offers VastAiOffers) stats2() OfferStats2 {
 		Unverified: offers.filter(func(offer *VastAiOffer) bool { return !offer.Verified }).stats(),
 		All:        offers.stats(),
 	}
-}
-
-func (offers VastAiRawOffers) json() []byte {
-	result, err := json.Marshal(offers)
-	if err != nil {
-		log.Errorln(err)
-		return nil
-	}
-	return result
 }

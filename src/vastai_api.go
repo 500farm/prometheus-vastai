@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aquilax/truncate"
 	"github.com/prometheus/common/log"
@@ -19,6 +20,7 @@ type VastAiApiResults struct {
 	myMachines  *[]VastAiMachine
 	myInstances *[]VastAiInstance
 	payouts     *PayoutInfo
+	ts          time.Time
 }
 
 type VastAiMachine struct {
@@ -54,7 +56,9 @@ type VastAiInstance struct {
 }
 
 func getVastAiInfoFromApi() VastAiApiResults {
-	result := VastAiApiResults{}
+	result := VastAiApiResults{
+		ts: time.Now(),
+	}
 
 	if err := loadOffers(&result); err != nil {
 		log.Errorln(err)
@@ -136,4 +140,21 @@ func boolToFloat(v bool) float64 {
 		return 1
 	}
 	return 0
+}
+
+type RawOffersResponse struct {
+	Timestamp time.Time        `json:"timestamp"`
+	Offers    *VastAiRawOffers `json:"offers"`
+}
+
+func (r *VastAiApiResults) rawOffersJson() []byte {
+	result, err := json.MarshalIndent(RawOffersResponse{
+		Timestamp: r.ts,
+		Offers:    r.rawOffers,
+	}, "", "    ")
+	if err != nil {
+		log.Errorln(err)
+		return nil
+	}
+	return result
 }
