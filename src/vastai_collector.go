@@ -266,18 +266,25 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 				"gpu_name": gpuName,
 			}
 			e.gpu_count.With(labels).Set(float64(len(prices)))
+			median := math.NaN()
+			percentileLow := math.NaN()
+			percentileHigh := math.NaN()
 			if len(prices) > 0 {
-				median, _ := stats.Median(prices)
+				median, _ = stats.Median(prices)
+				percentileLow, _ = stats.Percentile(prices, 10)
+				percentileHigh, _ = stats.Percentile(prices, 90)
+			}
+			if !math.IsNaN(median) {
 				e.ondemand_price_median_dollars.With(labels).Set(median)
-				percentileLow, _ := stats.Percentile(prices, 10)
-				percentileHigh, _ := stats.Percentile(prices, 90)
-				if !math.IsNaN(percentileHigh) && !math.IsNaN(percentileLow) {
-					e.ondemand_price_10th_percentile_dollars.With(labels).Set(percentileLow)
-					e.ondemand_price_90th_percentile_dollars.With(labels).Set(percentileHigh)
-				} else {
-					e.ondemand_price_10th_percentile_dollars.Delete(labels)
-					e.ondemand_price_90th_percentile_dollars.Delete(labels)
-				}
+			} else {
+				e.ondemand_price_median_dollars.Delete(labels)
+			}
+			if !math.IsNaN(percentileLow) && !math.IsNaN(percentileHigh) {
+				e.ondemand_price_10th_percentile_dollars.With(labels).Set(percentileLow)
+				e.ondemand_price_90th_percentile_dollars.With(labels).Set(percentileHigh)
+			} else {
+				e.ondemand_price_10th_percentile_dollars.Delete(labels)
+				e.ondemand_price_90th_percentile_dollars.Delete(labels)
 			}
 		}
 	}
