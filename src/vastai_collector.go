@@ -71,7 +71,7 @@ func newVastAiCollector() *VastAiCollector {
 		ondemand_price_90th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_90th_percentile_dollars",
-			Help:      "90th percentile of on-demand prices among verified GPU (excluding yours)",
+			Help:      "90th percentile of on-demand prices among verified GPUs (excluding yours)",
 		}, []string{"gpu_name"}),
 		gpu_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
