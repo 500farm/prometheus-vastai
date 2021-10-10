@@ -94,7 +94,7 @@ func (offers VastAiRawOffers) decode() VastAiOffers {
 				Verified:  offer["verified"].(bool),
 			})
 		} else {
-			log.Errorln("Invalid offer record %v", offer)
+			log.Errorln("Invalid offer record:", offer)
 		}
 	}
 	return result
