@@ -60,26 +60,22 @@ func getVastAiInfoFromApi() VastAiApiResults {
 		log.Errorln(err)
 	}
 
-	{
-		var response struct {
-			Machines []VastAiMachine `json:"machines"`
-		}
-		if err := vastApiCall(&response, "machines", nil); err != nil {
-			log.Errorln(err)
-		} else {
-			result.myMachines = &response.Machines
-		}
+	var response1 struct {
+		Machines []VastAiMachine `json:"machines"`
+	}
+	if err := vastApiCall(&response1, "machines", nil); err != nil {
+		log.Errorln(err)
+	} else {
+		result.myMachines = &response1.Machines
 	}
 
-	{
-		var response struct {
-			Instances []VastAiInstance `json:"instances"`
-		}
-		if err := vastApiCall(&response, "instances", nil); err != nil {
-			log.Errorln(err)
-		} else {
-			result.myInstances = &response.Instances
-		}
+	var response2 struct {
+		Instances []VastAiInstance `json:"instances"`
+	}
+	if err := vastApiCall(&response2, "instances", nil); err != nil {
+		log.Errorln(err)
+	} else {
+		result.myInstances = &response2.Instances
 	}
 
 	payouts, err := getPayouts()
