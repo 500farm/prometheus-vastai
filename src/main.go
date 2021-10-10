@@ -73,7 +73,11 @@ func main() {
 	})
 	http.HandleFunc("/raw-offers", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(info.rawOffersJson())
+		w.Write(info.rawOffersJson(false))
+	})
+	http.HandleFunc("/raw-offers/whole-machines", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(info.rawOffersJson(true))
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
@@ -84,6 +88,8 @@ func main() {
 		<h1>Vast.ai Exporter</h1>
 		<a href="/metrics">Metrics</a><br>
 		<a href="/metrics/all-gpus">Site-wide stats for all GPUs</a><br>
+		<a href="/raw-offers">Complete list of offers</a><br>
+		<a href="/raw-offers/whole-machines">Complete list of offers (only whole machines, not chunks)</a><br>
 		</body>
 		</html>`))
 	})

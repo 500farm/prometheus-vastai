@@ -143,14 +143,29 @@ func boolToFloat(v bool) float64 {
 }
 
 type RawOffersResponse struct {
+	Url       string           `json:"url"`
 	Timestamp time.Time        `json:"timestamp"`
+	Count     int              `json:"count"`
 	Offers    *VastAiRawOffers `json:"offers"`
 }
 
-func (r *VastAiApiResults) rawOffersJson() []byte {
+func (r *VastAiApiResults) rawOffersJson(wholeMachines bool) []byte {
+	offers := r.rawOffers
+	url := "/raw-offers"
+	if wholeMachines {
+		filtered := offers.filter(
+			func(offer *VastAiRawOffer) bool {
+				return (*offer)["gpu_frac"].(float64) == 1
+			},
+		)
+		offers = &filtered
+		url += "/whole-machines"
+	}
 	result, err := json.MarshalIndent(RawOffersResponse{
+		Url:       url,
 		Timestamp: r.ts,
-		Offers:    r.rawOffers,
+		Count:     len(*offers),
+		Offers:    offers,
 	}, "", "    ")
 	if err != nil {
 		log.Errorln(err)

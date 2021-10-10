@@ -65,6 +65,16 @@ func mergeRawOffers(verified VastAiRawOffers, unverified VastAiRawOffers) VastAi
 	return result
 }
 
+func (offers VastAiRawOffers) filter(filter func(*VastAiRawOffer) bool) VastAiRawOffers {
+	result := VastAiRawOffers{}
+	for _, offer := range offers {
+		if filter(&offer) {
+			result = append(result, offer)
+		}
+	}
+	return result
+}
+
 func (offers VastAiRawOffers) decode() VastAiOffers {
 	result := VastAiOffers{}
 	for _, offer := range offers {
