@@ -394,6 +394,7 @@ func (e *VastAiCollector) UpdateFrom(info *VastAiApiResults) {
 		for id, t := range e.knownInstances {
 			if !t.keep {
 				labels := t.labels
+				e.instance_info.Delete(*labels)
 				e.instance_is_running.Delete(*labels)
 				e.instance_my_bid_per_gpu_dollars.Delete(*labels)
 				e.instance_min_bid_per_gpu_dollars.Delete(*labels)
