@@ -13,6 +13,7 @@ type VastAiOffer struct {
 	GpuFrac   float64 `json:"gpu_frac"`
 	DlPerf    float64 `json:"dlperf"`
 	DphBase   float64 `json:"dph_base"`
+	Verified  bool
 }
 
 type GroupedOffers map[string][]VastAiOffer
@@ -20,6 +21,23 @@ type GroupedOffers map[string][]VastAiOffer
 type OfferStats struct {
 	Count                                 int
 	Median, PercentileLow, PercentileHigh float64
+}
+
+type OfferStats2 struct {
+	Verified, Unverified, All OfferStats
+}
+
+func mergeOffers(verified []VastAiOffer, unverified []VastAiOffer) []VastAiOffer {
+	result := []VastAiOffer{}
+	for _, offer := range verified {
+		offer.Verified = true
+		result = append(result, offer)
+	}
+	for _, offer := range unverified {
+		offer.Verified = false
+		result = append(result, offer)
+	}
+	return result
 }
 
 func groupOffersByGpuName(offers []VastAiOffer) GroupedOffers {
@@ -62,4 +80,12 @@ func offerStats(offers []VastAiOffer) OfferStats {
 		result.PercentileHigh, _ = stats.Percentile(prices, 90)
 	}
 	return result
+}
+
+func offerStats2(offers []VastAiOffer) OfferStats2 {
+	return OfferStats2{
+		Verified:   offerStats(filterOffers(offers, func(offer *VastAiOffer) bool { return offer.Verified })),
+		Unverified: offerStats(filterOffers(offers, func(offer *VastAiOffer) bool { return !offer.Verified })),
+		All:        offerStats(offers),
+	}
 }

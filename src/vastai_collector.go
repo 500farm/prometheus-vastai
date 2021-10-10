@@ -52,6 +52,7 @@ func newVastAiCollector() *VastAiCollector {
 
 	instanceLabelNames := []string{"instance_id", "machine_id", "rental_type"}
 	instanceInfoLabelNamess := append(append([]string{}, instanceLabelNames...), "docker_image", "gpu_name")
+	gpuStatsLabelNames := []string{"gpu_name", "verified"}
 
 	return &VastAiCollector{
 		knownInstances: make(instanceInfoMap),
@@ -60,23 +61,23 @@ func newVastAiCollector() *VastAiCollector {
 		ondemand_price_median_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_median_dollars",
-			Help:      "Median on-demand price among verified GPUs (excluding yours)",
-		}, []string{"gpu_name"}),
+			Help:      "Median on-demand price among same-type GPUs (excluding yours)",
+		}, gpuStatsLabelNames),
 		ondemand_price_10th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_10th_percentile_dollars",
-			Help:      "10th percentile of on-demand prices among verified GPUs (excluding yours)",
-		}, []string{"gpu_name"}),
+			Help:      "10th percentile of on-demand prices among same-type GPUs (excluding yours)",
+		}, gpuStatsLabelNames),
 		ondemand_price_90th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_90th_percentile_dollars",
-			Help:      "90th percentile of on-demand prices among verified GPUs (excluding yours)",
-		}, []string{"gpu_name"}),
+			Help:      "90th percentile of on-demand prices among same-type GPUs (excluding yours)",
+		}, gpuStatsLabelNames),
 		gpu_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "gpu_count",
 			Help:      "Number of GPUs offered on site (excluding yours)",
-		}, []string{"gpu_name"}),
+		}, gpuStatsLabelNames),
 
 		pending_payout_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -255,11 +256,7 @@ func (e *VastAiCollector) UpdateFrom(info VastAiApiResults) {
 			},
 		))
 
-		for _, gpuName := range myGpus {
-			stats := offerStats(groupedOffers[gpuName])
-			labels := prometheus.Labels{
-				"gpu_name": gpuName,
-			}
+		updateMetrics := func(labels prometheus.Labels, stats OfferStats) {
 			e.gpu_count.With(labels).Set(float64(stats.Count))
 			if !math.IsNaN(stats.Median) {
 				e.ondemand_price_median_dollars.With(labels).Set(stats.Median)
@@ -273,6 +270,22 @@ func (e *VastAiCollector) UpdateFrom(info VastAiApiResults) {
 				e.ondemand_price_10th_percentile_dollars.Delete(labels)
 				e.ondemand_price_90th_percentile_dollars.Delete(labels)
 			}
+		}
+
+		for _, gpuName := range myGpus {
+			stats := offerStats2(groupedOffers[gpuName])
+			updateMetrics(
+				prometheus.Labels{"gpu_name": gpuName, "verified": "yes"},
+				stats.Verified,
+			)
+			updateMetrics(
+				prometheus.Labels{"gpu_name": gpuName, "verified": "no"},
+				stats.Unverified,
+			)
+			updateMetrics(
+				prometheus.Labels{"gpu_name": gpuName, "verified": "any"},
+				stats.All,
+			)
 		}
 	}
 
