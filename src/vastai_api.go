@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/aquilax/truncate"
@@ -116,11 +117,12 @@ func vastApiCall(result interface{}, endpoint string, args url.Values) error {
 		return err
 	}
 	logBody := func(body []byte) {
-		log.Errorln(truncate.Truncate(strings.TrimSpace(string(body)), 200, "...", truncate.PositionEnd))
+		bodyStr := regexp.MustCompile(`\s+`).ReplaceAllString(strings.TrimSpace(string(body)), " ")
+		log.Errorln(truncate.Truncate(bodyStr, 200, "...", truncate.PositionEnd))
 	}
 	if resp.StatusCode != 200 {
 		logBody(body)
-		return fmt.Errorf("endpoint %s returned: %s", endpoint, resp.Status)
+		return fmt.Errorf("endpoint /%s returned: %s", endpoint, resp.Status)
 	}
 	err = json.Unmarshal(body, result)
 	if err != nil {
