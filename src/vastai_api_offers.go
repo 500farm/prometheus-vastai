@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"github.com/montanaflynn/stats"
+	"github.com/prometheus/common/log"
 )
 
 type VastAiRawOffer map[string]interface{}
@@ -78,14 +79,23 @@ func (offers VastAiRawOffers) filter(filter func(*VastAiRawOffer) bool) VastAiRa
 func (offers VastAiRawOffers) decode() VastAiOffers {
 	result := VastAiOffers{}
 	for _, offer := range offers {
-		result = append(result, VastAiOffer{
-			MachineId: int(offer["machine_id"].(float64)),
-			GpuName:   offer["gpu_name"].(string),
-			NumGpus:   int(offer["num_gpus"].(float64)),
-			GpuFrac:   offer["gpu_frac"].(float64),
-			DphBase:   offer["dph_base"].(float64),
-			Verified:  offer["verified"].(bool),
-		})
+		machineId, ok1 := offer["machine_id"].(float64)
+		gpuName, ok2 := offer["gpu_name"].(string)
+		numGpus, ok3 := offer["num_gpus"].(float64)
+		gpuFrac, ok4 := offer["gpu_frac"].(float64)
+		dphBase, ok5 := offer["dph_base"].(float64)
+		if ok1 && ok2 && ok3 && ok4 && ok5 {
+			result = append(result, VastAiOffer{
+				MachineId: int(machineId),
+				GpuName:   gpuName,
+				NumGpus:   int(numGpus),
+				GpuFrac:   gpuFrac,
+				DphBase:   dphBase,
+				Verified:  offer["verified"].(bool),
+			})
+		} else {
+			log.Errorln("Invalid offer record %v", offer)
+		}
 	}
 	return result
 }
