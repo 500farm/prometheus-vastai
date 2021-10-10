@@ -15,6 +15,7 @@ import (
 
 type VastAiApiResults struct {
 	offers      *[]VastAiOffer
+	rawOffers   *[]VastAiRawOffer
 	myMachines  *[]VastAiMachine
 	myInstances *[]VastAiInstance
 	payouts     *PayoutInfo
@@ -96,33 +97,42 @@ func isDefaultJob(instance *VastAiInstance) bool {
 }
 
 func vastApiCall(result interface{}, endpoint string, args url.Values) error {
+	body, err := vastApiCallRaw(endpoint, args)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(body, result)
+	if err != nil {
+		logErrorBody(body)
+		return err
+	}
+	return nil
+}
+
+func vastApiCallRaw(endpoint string, args url.Values) ([]byte, error) {
 	if args == nil {
 		args = make(url.Values)
 	}
 	args.Set("api_key", *apiKey)
 	resp, err := http.Get("https://vast.ai/api/v0/" + endpoint + "/?" + args.Encode())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
-	}
-	logBody := func(body []byte) {
-		bodyStr := regexp.MustCompile(`\s+`).ReplaceAllString(strings.TrimSpace(string(body)), " ")
-		log.Errorln(truncate.Truncate(bodyStr, 200, "...", truncate.PositionEnd))
+		return nil, err
 	}
 	if resp.StatusCode != 200 {
-		logBody(body)
-		return fmt.Errorf("endpoint /%s returned: %s", endpoint, resp.Status)
+		logErrorBody(body)
+		return nil, fmt.Errorf("endpoint /%s returned: %s", endpoint, resp.Status)
 	}
-	err = json.Unmarshal(body, result)
-	if err != nil {
-		logBody(body)
-		return err
-	}
-	return nil
+	return body, nil
+}
+
+func logErrorBody(body []byte) {
+	bodyStr := regexp.MustCompile(`\s+`).ReplaceAllString(strings.TrimSpace(string(body)), " ")
+	log.Errorln(truncate.Truncate(bodyStr, 200, "...", truncate.PositionEnd))
 }
 
 func boolToFloat(v bool) float64 {
