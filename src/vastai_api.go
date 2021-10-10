@@ -52,8 +52,8 @@ type VastAiInstance struct {
 	GpuName      string  `json:"gpu_name"`
 }
 
-func getVastAiInfoFromApi() *VastAiApiResults {
-	result := new(VastAiApiResults)
+func getVastAiInfoFromApi() VastAiApiResults {
+	result := VastAiApiResults{}
 
 	var response struct {
 		Offers []VastAiOffer `json:"offers"`

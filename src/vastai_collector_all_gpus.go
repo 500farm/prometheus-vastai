@@ -54,7 +54,7 @@ func (e *VastAiCollectorAllGpus) Collect(ch chan<- prometheus.Metric) {
 	e.gpu_count.Collect(ch)
 }
 
-func (e *VastAiCollectorAllGpus) UpdateFrom(info *VastAiApiResults) {
+func (e *VastAiCollectorAllGpus) UpdateFrom(info VastAiApiResults) {
 	if info.offers == nil {
 		return
 	}
