@@ -5,7 +5,6 @@ import (
 	"net/url"
 
 	"github.com/montanaflynn/stats"
-	"github.com/prometheus/common/log"
 )
 
 type VastAiRawOffer map[string]interface{}
@@ -94,7 +93,8 @@ func (offers VastAiRawOffers) decode() VastAiOffers {
 				Verified:  offer["verified"].(bool),
 			})
 		} else {
-			log.Errorln("Invalid offer record:", offer)
+			// this happens often for some offers, probably just listed - ignoring for now
+			// log.Errorln("Invalid offer record:", offer)
 		}
 	}
 	return result
