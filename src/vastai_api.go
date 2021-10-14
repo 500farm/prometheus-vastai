@@ -155,7 +155,8 @@ func (r *VastAiApiResults) rawOffersJson(wholeMachines bool) []byte {
 	if wholeMachines {
 		filtered := offers.filter(
 			func(offer *VastAiRawOffer) bool {
-				return (*offer)["gpu_frac"].(float64) == 1
+				frac, ok := (*offer)["gpu_frac"].(float64)
+				return ok && frac == 1
 			},
 		)
 		offers = &filtered
