@@ -26,6 +26,7 @@ type VastAiCollector struct {
 	gpu_count                              *prometheus.GaugeVec
 	pending_payout_dollars                 prometheus.Gauge
 	paid_out_dollars                       prometheus.Gauge
+	last_payout_time                       prometheus.Gauge
 
 	machine_info        *prometheus.GaugeVec
 	machine_is_verified *prometheus.GaugeVec
@@ -88,6 +89,11 @@ func newVastAiCollector() *VastAiCollector {
 			Namespace: namespace,
 			Name:      "paid_out_dollars",
 			Help:      "All-time paid out amount (minus service fees)",
+		}),
+		last_payout_time: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "last_payout_time",
+			Help:      "Unix timestamp of last completed payout",
 		}),
 
 		machine_info: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -184,6 +190,7 @@ func (e *VastAiCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.gpu_count.Describe(ch)
 	ch <- e.pending_payout_dollars.Desc()
 	ch <- e.paid_out_dollars.Desc()
+	ch <- e.last_payout_time.Desc()
 
 	e.machine_info.Describe(ch)
 	e.machine_is_verified.Describe(ch)
@@ -212,6 +219,7 @@ func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
 	e.gpu_count.Collect(ch)
 	ch <- e.pending_payout_dollars
 	ch <- e.paid_out_dollars
+	ch <- e.last_payout_time
 
 	e.machine_info.Collect(ch)
 	e.machine_is_verified.Collect(ch)
@@ -422,6 +430,7 @@ func (e *VastAiCollector) UpdateFrom(info VastAiApiResults) {
 
 			e.pending_payout_dollars.Set(info.payouts.PendingPayout)
 			e.paid_out_dollars.Set(info.payouts.PaidOut)
+			e.last_payout_time.Set(info.payouts.LastPayoutTime)
 
 			// store lastPayouts and write them to the status file
 			e.lastPayouts = info.payouts

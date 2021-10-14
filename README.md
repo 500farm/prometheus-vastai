@@ -142,6 +142,9 @@ vastai_paid_out_dollars 303.34
 # HELP vastai_pending_payout_dollars Pending payout (minus service fees)
 vastai_pending_payout_dollars 28.23
 
+# HELP last_payout_time Unix timestamp of last completed payout
+last_payout_time 1628284623.45397
+
 
 ### Overall GPU offer stats (shows stats on GPUs same as yours but offered by other hosts)
 

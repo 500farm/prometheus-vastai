@@ -14,14 +14,16 @@ type VastAiInvoices struct {
 		Total float64 `json:"total"`
 	} `json:"current"`
 	Invoices []struct {
-		Type   string `json:"type"`
-		Amount string `json:"amount"`
+		Type   string  `json:"type"`
+		Amount string  `json:"amount"`
+		Ts     float64 `json:"timestamp"`
 	} `json:"invoices"`
 }
 
 type PayoutInfo struct {
-	PaidOut       float64 `json:"paidOut"`
-	PendingPayout float64 `json:"pendingPayout"`
+	PaidOut        float64 `json:"paidOut"`
+	PendingPayout  float64 `json:"pendingPayout"`
+	LastPayoutTime float64 `json:"lastPayoutTime"`
 }
 
 func getPayouts() (*PayoutInfo, error) {
@@ -31,15 +33,17 @@ func getPayouts() (*PayoutInfo, error) {
 		return nil, err
 	}
 	paidOut := int64(0) // in cents to avoid precision loss when summing
+	lastPayoutTime := 0.0
 	for _, invoice := range data.Invoices {
 		if invoice.Type == "payment" {
 			amount, _ := strconv.ParseFloat(invoice.Amount, 64)
 			if amount > 0 {
 				paidOut += int64(amount * 100)
+				lastPayoutTime = invoice.Ts
 			}
 		}
 	}
-	return &PayoutInfo{float64(paidOut) / 100, data.Current.Total}, nil
+	return &PayoutInfo{float64(paidOut) / 100, data.Current.Total, lastPayoutTime}, nil
 }
 
 func readLastPayouts() *PayoutInfo {
