@@ -60,7 +60,7 @@ func getVastAiInfoFromApi() VastAiApiResults {
 		ts: time.Now(),
 	}
 
-	if err := getOffersFromApi(&result); err != nil {
+	if err := getRawOffersFromApi(&result); err != nil {
 		log.Errorln(err)
 	}
 
