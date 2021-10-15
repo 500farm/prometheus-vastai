@@ -31,7 +31,7 @@ type OfferStats2 struct {
 	Verified, Unverified, All OfferStats
 }
 
-func loadOffers(result *VastAiApiResults) error {
+func getOffersFromApi(result *VastAiApiResults) error {
 	var verified, unverified struct {
 		Offers VastAiRawOffers `json:"offers"`
 	}
@@ -45,10 +45,8 @@ func loadOffers(result *VastAiApiResults) error {
 	}); err != nil {
 		return err
 	}
-	rawOffers := mergeRawOffers(verified.Offers, unverified.Offers)
-	offers := rawOffers.decode()
-	result.rawOffers = &rawOffers
-	result.offers = &offers
+	result.offersVerified = &verified.Offers
+	result.offersUnverified = &unverified.Offers
 	return nil
 }
 
@@ -73,6 +71,15 @@ func (offers VastAiRawOffers) filter(filter func(*VastAiRawOffer) bool) VastAiRa
 		}
 	}
 	return result
+}
+
+func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
+	return offers.filter(
+		func(offer *VastAiRawOffer) bool {
+			frac, ok := (*offer)["gpu_frac"].(float64)
+			return ok && frac == 1
+		},
+	)
 }
 
 func (offers VastAiRawOffers) decode() VastAiOffers {

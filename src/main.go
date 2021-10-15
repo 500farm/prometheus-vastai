@@ -55,7 +55,12 @@ func main() {
 	vastAiCollector := newVastAiCollector()
 	log.Infoln("Reading initial Vast.ai info")
 	info := getVastAiInfoFromApi()
-	err := vastAiCollector.InitialUpdateFrom(info)
+	err := offerCache.InitialUpdateFrom(info)
+	if err != nil {
+		// initial update must succeed, otherwise exit
+		log.Fatalln(err)
+	}
+	err = vastAiCollector.InitialUpdateFrom(info, &offerCache)
 	if err != nil {
 		// initial update must succeed, otherwise exit
 		log.Fatalln(err)
@@ -63,7 +68,7 @@ func main() {
 
 	// additional collector for /metrics-allgpus
 	vastAiCollectorAllGpus := newVastAiCollectorAllGpus()
-	vastAiCollectorAllGpus.UpdateFrom(info)
+	vastAiCollectorAllGpus.UpdateFrom(&offerCache)
 
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		metricsHandler(w, r, vastAiCollector)
@@ -73,11 +78,11 @@ func main() {
 	})
 	http.HandleFunc("/raw-offers", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(info.rawOffersJson(false))
+		w.Write(offerCache.rawOffersJson(false))
 	})
 	http.HandleFunc("/raw-offers/whole-machines", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(info.rawOffersJson(true))
+		w.Write(offerCache.rawOffersJson(true))
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
@@ -97,9 +102,10 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(*updateInterval)
-			info = getVastAiInfoFromApi()
-			vastAiCollector.UpdateFrom(info)
-			vastAiCollectorAllGpus.UpdateFrom(info)
+			info := getVastAiInfoFromApi()
+			offerCache.UpdateFrom(info)
+			vastAiCollector.UpdateFrom(info, &offerCache)
+			vastAiCollectorAllGpus.UpdateFrom(&offerCache)
 		}
 	}()
 

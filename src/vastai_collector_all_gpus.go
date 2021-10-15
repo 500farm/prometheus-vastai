@@ -55,16 +55,8 @@ func (e *VastAiCollectorAllGpus) Collect(ch chan<- prometheus.Metric) {
 	e.gpu_count.Collect(ch)
 }
 
-func (e *VastAiCollectorAllGpus) UpdateFrom(info VastAiApiResults) {
-	if info.offers == nil {
-		return
-	}
-
-	groupedOffers := info.offers.filter(
-		func(offer *VastAiOffer) bool {
-			return offer.GpuFrac == 1
-		},
-	).groupByGpu()
+func (e *VastAiCollectorAllGpus) UpdateFrom(offerCache *OfferCache) {
+	groupedOffers := offerCache.offers.groupByGpu()
 
 	updateMetrics := func(labels prometheus.Labels, stats OfferStats) {
 		e.gpu_count.With(labels).Set(float64(stats.Count))

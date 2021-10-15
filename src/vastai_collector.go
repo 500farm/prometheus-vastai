@@ -241,7 +241,7 @@ func (e *VastAiCollector) Collect(ch chan<- prometheus.Metric) {
 	e.instance_gpu_fraction.Collect(ch)
 }
 
-func (e *VastAiCollector) UpdateFrom(info VastAiApiResults) {
+func (e *VastAiCollector) UpdateFrom(info VastAiApiResults, offerCache *OfferCache) {
 	if info.myMachines == nil {
 		return
 	}
@@ -256,44 +256,42 @@ func (e *VastAiCollector) UpdateFrom(info VastAiApiResults) {
 	}
 
 	// process offers
-	if info.offers != nil {
-		groupedOffers := info.offers.filter(
-			func(offer *VastAiOffer) bool {
-				return offer.GpuFrac == 1 && !isMyMachineId[offer.MachineId]
-			},
-		).groupByGpu()
+	groupedOffers := offerCache.offers.filter(
+		func(offer *VastAiOffer) bool {
+			return !isMyMachineId[offer.MachineId]
+		},
+	).groupByGpu()
 
-		updateMetrics := func(labels prometheus.Labels, stats OfferStats) {
-			e.gpu_count.With(labels).Set(float64(stats.Count))
-			if !math.IsNaN(stats.Median) {
-				e.ondemand_price_median_dollars.With(labels).Set(stats.Median)
-			} else {
-				e.ondemand_price_median_dollars.Delete(labels)
-			}
-			if !math.IsNaN(stats.PercentileLow) && !math.IsNaN(stats.PercentileHigh) {
-				e.ondemand_price_10th_percentile_dollars.With(labels).Set(stats.PercentileLow)
-				e.ondemand_price_90th_percentile_dollars.With(labels).Set(stats.PercentileHigh)
-			} else {
-				e.ondemand_price_10th_percentile_dollars.Delete(labels)
-				e.ondemand_price_90th_percentile_dollars.Delete(labels)
-			}
+	updateMetrics := func(labels prometheus.Labels, stats OfferStats) {
+		e.gpu_count.With(labels).Set(float64(stats.Count))
+		if !math.IsNaN(stats.Median) {
+			e.ondemand_price_median_dollars.With(labels).Set(stats.Median)
+		} else {
+			e.ondemand_price_median_dollars.Delete(labels)
 		}
+		if !math.IsNaN(stats.PercentileLow) && !math.IsNaN(stats.PercentileHigh) {
+			e.ondemand_price_10th_percentile_dollars.With(labels).Set(stats.PercentileLow)
+			e.ondemand_price_90th_percentile_dollars.With(labels).Set(stats.PercentileHigh)
+		} else {
+			e.ondemand_price_10th_percentile_dollars.Delete(labels)
+			e.ondemand_price_90th_percentile_dollars.Delete(labels)
+		}
+	}
 
-		for _, gpuName := range myGpus {
-			stats := groupedOffers[gpuName].stats2()
-			updateMetrics(
-				prometheus.Labels{"gpu_name": gpuName, "verified": "yes"},
-				stats.Verified,
-			)
-			updateMetrics(
-				prometheus.Labels{"gpu_name": gpuName, "verified": "no"},
-				stats.Unverified,
-			)
-			updateMetrics(
-				prometheus.Labels{"gpu_name": gpuName, "verified": "any"},
-				stats.All,
-			)
-		}
+	for _, gpuName := range myGpus {
+		stats := groupedOffers[gpuName].stats2()
+		updateMetrics(
+			prometheus.Labels{"gpu_name": gpuName, "verified": "yes"},
+			stats.Verified,
+		)
+		updateMetrics(
+			prometheus.Labels{"gpu_name": gpuName, "verified": "no"},
+			stats.Unverified,
+		)
+		updateMetrics(
+			prometheus.Labels{"gpu_name": gpuName, "verified": "any"},
+			stats.All,
+		)
 	}
 
 	// process machines
@@ -439,18 +437,19 @@ func (e *VastAiCollector) UpdateFrom(info VastAiApiResults) {
 	}
 }
 
-func (e *VastAiCollector) InitialUpdateFrom(info VastAiApiResults) error {
-	if info.offers == nil || info.myInstances == nil || info.myMachines == nil || info.payouts == nil {
+func (e *VastAiCollector) InitialUpdateFrom(info VastAiApiResults, offerCache *OfferCache) error {
+	if info.myInstances == nil || info.myMachines == nil || info.payouts == nil {
 		return errors.New("Could not read all required data from Vast.ai")
 	}
 
 	if e.lastPayouts != nil {
 		e.pending_payout_dollars.Set(e.lastPayouts.PendingPayout)
 		e.paid_out_dollars.Set(e.lastPayouts.PaidOut)
+		e.last_payout_time.Set(e.lastPayouts.LastPayoutTime)
 	}
 
-	e.UpdateFrom(info)
+	e.UpdateFrom(info, offerCache)
 
-	log.Infoln(len(*info.offers), "offers,", len(*info.myMachines), "machines,", len(*info.myInstances), "instances, payouts:", *info.payouts)
+	log.Infoln(len(offerCache.rawOffers), "raw offers,", len(*info.myMachines), "machines,", len(*info.myInstances), "instances, payouts:", *info.payouts)
 	return nil
 }

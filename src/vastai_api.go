@@ -15,12 +15,12 @@ import (
 )
 
 type VastAiApiResults struct {
-	offers      *VastAiOffers
-	rawOffers   *VastAiRawOffers
-	myMachines  *[]VastAiMachine
-	myInstances *[]VastAiInstance
-	payouts     *PayoutInfo
-	ts          time.Time
+	offersVerified   *VastAiRawOffers
+	offersUnverified *VastAiRawOffers
+	myMachines       *[]VastAiMachine
+	myInstances      *[]VastAiInstance
+	payouts          *PayoutInfo
+	ts               time.Time
 }
 
 type VastAiMachine struct {
@@ -60,7 +60,7 @@ func getVastAiInfoFromApi() VastAiApiResults {
 		ts: time.Now(),
 	}
 
-	if err := loadOffers(&result); err != nil {
+	if err := getOffersFromApi(&result); err != nil {
 		log.Errorln(err)
 	}
 
@@ -140,37 +140,4 @@ func boolToFloat(v bool) float64 {
 		return 1
 	}
 	return 0
-}
-
-type RawOffersResponse struct {
-	Url       string           `json:"url"`
-	Timestamp time.Time        `json:"timestamp"`
-	Count     int              `json:"count"`
-	Offers    *VastAiRawOffers `json:"offers"`
-}
-
-func (r *VastAiApiResults) rawOffersJson(wholeMachines bool) []byte {
-	offers := r.rawOffers
-	url := "/raw-offers"
-	if wholeMachines {
-		filtered := offers.filter(
-			func(offer *VastAiRawOffer) bool {
-				frac, ok := (*offer)["gpu_frac"].(float64)
-				return ok && frac == 1
-			},
-		)
-		offers = &filtered
-		url += "/whole-machines"
-	}
-	result, err := json.MarshalIndent(RawOffersResponse{
-		Url:       url,
-		Timestamp: r.ts.UTC(),
-		Count:     len(*offers),
-		Offers:    offers,
-	}, "", "    ")
-	if err != nil {
-		log.Errorln(err)
-		return nil
-	}
-	return result
 }
