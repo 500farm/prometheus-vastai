@@ -43,10 +43,10 @@ type RawOffersResponse struct {
 
 func (cache *OfferCache) rawOffersJson(wholeMachines bool) []byte {
 	var offers *VastAiRawOffers
-	url := "/raw-offers"
+	url := "/offers"
 	if wholeMachines {
 		offers = &cache.wholeMachineRawOffers
-		url += "/whole-machines"
+		url = "/machines"
 	} else {
 		offers = &cache.rawOffers
 	}

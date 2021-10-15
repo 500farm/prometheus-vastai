@@ -31,9 +31,9 @@ var (
 	).String()
 )
 
-func metricsHandler(w http.ResponseWriter, r *http.Request, vastAiCollector prometheus.Collector) {
+func metricsHandler(w http.ResponseWriter, r *http.Request, collector prometheus.Collector) {
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(vastAiCollector)
+	registry.MustRegister(collector)
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
 }
@@ -52,49 +52,58 @@ func main() {
 		*stateDir = "/tmp"
 	}
 
-	vastAiCollector := newVastAiCollector()
 	log.Infoln("Reading initial Vast.ai info")
+
+	// read info from vast.ai: offers
 	info := getVastAiInfoFromApi()
 	err := offerCache.InitialUpdateFrom(info)
 	if err != nil {
 		// initial update must succeed, otherwise exit
 		log.Fatalln(err)
 	}
-	err = vastAiCollector.InitialUpdateFrom(info, &offerCache)
+
+	// read info from vast.ai: global stats
+	vastAiGlobalCollector := newVastAiGlobalCollector()
+	vastAiGlobalCollector.UpdateFrom(&offerCache)
+
+	// read info from vast.ai: account stats
+	vastAiAccountCollector := newVastAiAccountCollector()
+	err = vastAiAccountCollector.InitialUpdateFrom(info, &offerCache)
 	if err != nil {
 		// initial update must succeed, otherwise exit
 		log.Fatalln(err)
 	}
 
-	// additional collector for /metrics-allgpus
-	vastAiCollectorAllGpus := newVastAiCollectorAllGpus()
-	vastAiCollectorAllGpus.UpdateFrom(&offerCache)
-
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		metricsHandler(w, r, vastAiCollector)
+		// account stats
+		metricsHandler(w, r, vastAiAccountCollector)
 	})
-	http.HandleFunc("/metrics/all-gpus", func(w http.ResponseWriter, r *http.Request) {
-		metricsHandler(w, r, vastAiCollectorAllGpus)
+	http.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {
+		// global stats
+		metricsHandler(w, r, vastAiGlobalCollector)
 	})
-	http.HandleFunc("/raw-offers", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/offers", func(w http.ResponseWriter, r *http.Request) {
+		// json list of offers
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(offerCache.rawOffersJson(false))
 	})
-	http.HandleFunc("/raw-offers/whole-machines", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/machines", func(w http.ResponseWriter, r *http.Request) {
+		// json list of machines
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(offerCache.rawOffersJson(true))
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// index page
 		w.Write([]byte(`<html>
 		<head>
 		<title>Vast.ai Exporter</title>
 		</head>
 		<body>
 		<h1>Vast.ai Exporter</h1>
-		<a href="/metrics">Metrics</a><br>
-		<a href="/metrics/all-gpus">Site-wide stats for all GPUs</a><br>
-		<a href="/raw-offers">Complete list of offers</a><br>
-		<a href="/raw-offers/whole-machines">Complete list of offers (only whole machines, not chunks)</a><br>
+		<a href="/metrics">Account stats</a><br>
+		<a href="/metrics/global">Global stats</a><br>
+		<a href="/offers">Global JSON list of offers</a><br>
+		<a href="/machines">Global JSON list of machines</a><br>
 		</body>
 		</html>`))
 	})
@@ -104,8 +113,8 @@ func main() {
 			time.Sleep(*updateInterval)
 			info := getVastAiInfoFromApi()
 			offerCache.UpdateFrom(info)
-			vastAiCollector.UpdateFrom(info, &offerCache)
-			vastAiCollectorAllGpus.UpdateFrom(&offerCache)
+			vastAiGlobalCollector.UpdateFrom(&offerCache)
+			vastAiAccountCollector.UpdateFrom(info, &offerCache)
 		}
 	}()
 
