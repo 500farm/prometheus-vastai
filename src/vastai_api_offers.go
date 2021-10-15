@@ -126,6 +126,14 @@ func (offers VastAiOffers) filter(filter func(*VastAiOffer) bool) VastAiOffers {
 	return result
 }
 
+func (offers VastAiOffers) filterVerified() VastAiOffers {
+	return offers.filter(func(offer *VastAiOffer) bool { return offer.Verified })
+}
+
+func (offers VastAiOffers) filterUnverified() VastAiOffers {
+	return offers.filter(func(offer *VastAiOffer) bool { return !offer.Verified })
+}
+
 func (offers VastAiOffers) stats() OfferStats {
 	prices := []float64{}
 	for _, offer := range offers {
@@ -151,8 +159,8 @@ func (offers VastAiOffers) stats() OfferStats {
 
 func (offers VastAiOffers) stats2() OfferStats2 {
 	return OfferStats2{
-		Verified:   offers.filter(func(offer *VastAiOffer) bool { return offer.Verified }).stats(),
-		Unverified: offers.filter(func(offer *VastAiOffer) bool { return !offer.Verified }).stats(),
+		Verified:   offers.filterVerified().stats(),
+		Unverified: offers.filterUnverified().stats(),
 		All:        offers.stats(),
 	}
 }
