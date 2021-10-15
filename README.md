@@ -149,22 +149,41 @@ last_payout_time 1628284623.45397
 ### Overall GPU offer stats (shows stats on GPUs same as yours but offered by other hosts)
 
 # HELP vastai_gpu_count Number of GPUs offered on site (excluding yours)
-vastai_gpu_count{gpu_name="RTX 3080",verified="any"} 132
-vastai_gpu_count{gpu_name="RTX 3080",verified="no"} 12
-vastai_gpu_count{gpu_name="RTX 3080",verified="yes"} 120
+vastai_gpu_count{gpu_name="RTX 3080",rented="no",verified="no"} 12
+vastai_gpu_count{gpu_name="RTX 3080",rented="no",verified="yes"} 1
+vastai_gpu_count{gpu_name="RTX 3080",rented="yes",verified="no"} 90
+vastai_gpu_count{gpu_name="RTX 3080",rented="yes",verified="yes"} 120
 
 # HELP vastai_ondemand_price_median_dollars Median on-demand price among same-type GPUs
-vastai_ondemand_price_median_dollars{gpu_name="RTX 3080",verified="yes"} 0.4
-vastai_ondemand_price_median_dollars{gpu_name="RTX 3080",verified="no"} 0.33
-vastai_ondemand_price_median_dollars{gpu_name="RTX 3080",verified="any"} 0.38
+vastai_ondemand_price_median_dollars{gpu_name="RTX 3080",rented="any",verified="any"} 0.38
+vastai_ondemand_price_median_dollars{gpu_name="RTX 3080",rented="any",verified="no"} 0.36
+vastai_ondemand_price_median_dollars{gpu_name="RTX 3080",rented="any",verified="yes"} 0.38
+vastai_ondemand_price_median_dollars{gpu_name="RTX 3080",rented="no",verified="any"} 0.4
+vastai_ondemand_price_median_dollars{gpu_name="RTX 3080",rented="no",verified="no"} 0.4
+vastai_ondemand_price_median_dollars{gpu_name="RTX 3080",rented="no",verified="yes"} 1.1
+vastai_ondemand_price_median_dollars{gpu_name="RTX 3080",rented="yes",verified="any"} 0.38
+vastai_ondemand_price_median_dollars{gpu_name="RTX 3080",rented="yes",verified="no"} 0.36
+vastai_ondemand_price_median_dollars{gpu_name="RTX 3080",rented="yes",verified="yes"} 0.38
 
 # HELP vastai_ondemand_price_10th_percentile_dollars 10th percentile of on-demand prices among same-type GPUs
-vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080",verified="yes"} 0.2
-vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080",verified="no"} 0.2
-vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080",verified="any"} 0.2
+vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080",rented="any",verified="any"} 0.26
+vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080",rented="any",verified="no"} 0.26
+vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080",rented="any",verified="yes"} 0.32
+vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080",rented="no",verified="any"} 0.285
+vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080",rented="no",verified="no"} 0.285
+vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080",rented="no",verified="yes"} 1.1
+vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080",rented="yes",verified="any"} 0.26
+vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080",rented="yes",verified="no"} 0.26
+vastai_ondemand_price_10th_percentile_dollars{gpu_name="RTX 3080",rented="yes",verified="yes"} 0.32
 
 # HELP vastai_ondemand_price_90th_percentile_dollars 90th percentile of on-demand prices among same-type GPUs
-vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",verified="yes"} 0.5
-vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",verified="no"} 0.4
-vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",verified="any"} 0.48
+vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="any",verified="any"} 0.5
+vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="any",verified="no"} 0.5
+vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="any",verified="yes"} 0.625
+vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="no",verified="any"} 0.49
+vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="no",verified="no"} 0.49
+vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="no",verified="yes"} 1.1
+vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="yes",verified="any"} 0.5
+vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="yes",verified="no"} 0.5
+vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="yes",verified="yes"} 0.65
 ```
