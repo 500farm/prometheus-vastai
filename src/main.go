@@ -20,7 +20,7 @@ var (
 	apiKey = kingpin.Flag(
 		"key",
 		"Vast.ai API key",
-	).Required().String()
+	).Default("").String()
 	updateInterval = kingpin.Flag(
 		"update-interval",
 		"How often to query Vast.ai for updates",
@@ -66,22 +66,19 @@ func main() {
 	vastAiGlobalCollector := newVastAiGlobalCollector()
 	vastAiGlobalCollector.UpdateFrom(&offerCache)
 
-	// read info from vast.ai: account stats
+	// read info from vast.ai: account stats (if api key is specified)
+	useAccount := *apiKey != ""
 	vastAiAccountCollector := newVastAiAccountCollector()
-	err = vastAiAccountCollector.InitialUpdateFrom(info, &offerCache)
-	if err != nil {
-		// initial update must succeed, otherwise exit
-		log.Fatalln(err)
+	if useAccount {
+		err = vastAiAccountCollector.InitialUpdateFrom(info, &offerCache)
+		if err != nil {
+			// initial update must succeed, otherwise exit
+			log.Fatalln(err)
+		}
+	} else {
+		log.Infoln("No Vast.ai API key provided, only serving global stats")
 	}
 
-	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		// account stats
-		metricsHandler(w, r, vastAiAccountCollector)
-	})
-	http.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {
-		// global stats
-		metricsHandler(w, r, vastAiGlobalCollector)
-	})
 	http.HandleFunc("/offers", func(w http.ResponseWriter, r *http.Request) {
 		// json list of offers
 		w.Header().Set("Content-Type", "application/json")
@@ -92,20 +89,27 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(offerCache.rawOffersJson(true))
 	})
+	http.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {
+		// global stats
+		metricsHandler(w, r, vastAiGlobalCollector)
+	})
+	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		// account stats (if api key is specified)
+		if useAccount {
+			metricsHandler(w, r, vastAiAccountCollector)
+		} else {
+			metricsHandler(w, r, vastAiGlobalCollector)
+		}
+	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// index page
-		w.Write([]byte(`<html>
-		<head>
-		<title>Vast.ai Exporter</title>
-		</head>
-		<body>
-		<h1>Vast.ai Exporter</h1>
-		<a href="/metrics">Account stats</a><br>
-		<a href="/metrics/global">Global stats</a><br>
-		<a href="/offers">Global JSON list of offers</a><br>
-		<a href="/machines">Global JSON list of machines</a><br>
-		</body>
-		</html>`))
+		w.Write([]byte(`<html><head><title>Vast.ai Exporter</title></head><body><h1>Vast.ai Exporter</h1>`))
+		if useAccount {
+			w.Write([]byte(`<a href="/metrics">Account stats</a><br><a href="/metrics/global">Global stats</a><br>`))
+		} else {
+			w.Write([]byte(`<a href="/metrics">Global stats</a><br>`))
+		}
+		w.Write([]byte(`<a href="/offers">Global JSON list of offers</a><br><a href="/machines">Global JSON list of machines</a><br></body></html>`))
 	})
 
 	go func() {
@@ -114,7 +118,9 @@ func main() {
 			info := getVastAiInfoFromApi()
 			offerCache.UpdateFrom(info)
 			vastAiGlobalCollector.UpdateFrom(&offerCache)
-			vastAiAccountCollector.UpdateFrom(info, &offerCache)
+			if useAccount {
+				vastAiAccountCollector.UpdateFrom(info, &offerCache)
+			}
 		}
 	}()
 

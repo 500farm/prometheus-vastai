@@ -64,6 +64,10 @@ func getVastAiInfoFromApi() VastAiApiResults {
 		log.Errorln(err)
 	}
 
+	if *apiKey == "" {
+		return result
+	}
+
 	var response1 struct {
 		Machines []VastAiMachine `json:"machines"`
 	}
@@ -113,7 +117,9 @@ func vastApiCallRaw(endpoint string, args url.Values) ([]byte, error) {
 	if args == nil {
 		args = make(url.Values)
 	}
-	args.Set("api_key", *apiKey)
+	if *apiKey != "" {
+		args.Set("api_key", *apiKey)
+	}
 	resp, err := http.Get("https://vast.ai/api/v0/" + endpoint + "/?" + args.Encode())
 	if err != nil {
 		return nil, err
