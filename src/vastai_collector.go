@@ -257,7 +257,7 @@ func (e *VastAiCollector) UpdateFrom(info VastAiApiResults, offerCache *OfferCac
 
 	// process offers
 	groupedOffers := offerCache.machines.filter(
-		func(offer *VastAiOffer) bool {
+		func(offer VastAiOffer) bool {
 			return !isMyMachineId[offer.MachineId]
 		},
 	).groupByGpu()
