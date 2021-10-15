@@ -56,7 +56,7 @@ func (e *VastAiCollectorAllGpus) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (e *VastAiCollectorAllGpus) UpdateFrom(offerCache *OfferCache) {
-	groupedOffers := offerCache.offers.groupByGpu()
+	groupedOffers := offerCache.machines.groupByGpu()
 
 	updateMetrics := func(labels prometheus.Labels, stats OfferStats) {
 		e.gpu_count.With(labels).Set(float64(stats.Count))

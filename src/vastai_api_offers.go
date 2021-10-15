@@ -1,22 +1,24 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"net/url"
 
 	"github.com/montanaflynn/stats"
+	"github.com/prometheus/common/log"
 )
 
 type VastAiRawOffer map[string]interface{}
 type VastAiRawOffers []VastAiRawOffer
 
 type VastAiOffer struct {
-	MachineId int
-	GpuName   string
-	NumGpus   int
-	GpuFrac   float64
-	DphBase   float64
-	Verified  bool
+	MachineId     int
+	GpuName       string
+	NumGpus       int
+	NumGpusRented int
+	PricePerGpu   float64
+	Verified      bool
 }
 type VastAiOffers []VastAiOffer
 
@@ -60,6 +62,19 @@ func mergeRawOffers(verified VastAiRawOffers, unverified VastAiRawOffers) VastAi
 		offer["verified"] = false
 		result = append(result, offer)
 	}
+	for _, offer := range result {
+		// remove useless fields
+		delete(offer, "external")
+		delete(offer, "webpage")
+		delete(offer, "logo")
+		delete(offer, "pending_count")
+		delete(offer, "inet_down_billed")
+		delete(offer, "inet_up_billed")
+		delete(offer, "storage_total_cost")
+		delete(offer, "dph_total")
+		delete(offer, "rented")
+		delete(offer, "is_bid")
+	}
 	return result
 }
 
@@ -81,45 +96,117 @@ func (offers VastAiRawOffers) filter2(filter func(VastAiRawOffer) bool, postProc
 	return result
 }
 
+func (offers VastAiRawOffers) validate() VastAiRawOffers {
+	return offers.filter(func(offer VastAiRawOffer) bool {
+		// check if required fields are ok and have a correct type
+		// (e.g. for some machines gpu_frac can be null for unknown reason)
+		_, ok1 := offer["machine_id"].(float64)
+		_, ok2 := offer["gpu_name"].(string)
+		_, ok3 := offer["num_gpus"].(float64)
+		_, ok4 := offer["gpu_frac"].(float64)
+		_, ok5 := offer["dph_base"].(float64)
+		_, ok6 := offer["rentable"].(bool)
+		if ok1 && ok2 && ok3 && ok4 && ok5 && ok6 {
+			return true
+		}
+		// this happens often for some offers, probably just listed - ignoring for now
+		// log.Errorln("Invalid offer record:", offer)
+		return false
+	})
+}
+
+func (offers VastAiRawOffers) groupByMachineId() map[int]VastAiRawOffers {
+	grouped := make(map[int]VastAiRawOffers)
+	for _, offer := range offers {
+		machineId := int(offer["machine_id"].(float64))
+		grouped[machineId] = append(grouped[machineId], offer)
+	}
+	return grouped
+}
+
 func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
-	return offers.filter2(
-		func(offer VastAiRawOffer) bool {
-			frac, ok := offer["gpu_frac"].(float64)
-			return ok && frac == 1
-		},
-		func(offer VastAiRawOffer) VastAiRawOffer {
-			result := VastAiRawOffer{}
-			for k, v := range offer {
-				if k != "gpu_frac" {
-					result[k] = v
+	result := VastAiRawOffers{}
+
+	for machineId, offers := range offers.groupByMachineId() {
+		// for each machine:
+		// - find out minimal chunk size
+		minChunkSize := 10000
+		for _, offer := range offers {
+			numGpus := int(offer["num_gpus"].(float64))
+			if numGpus < minChunkSize {
+				minChunkSize = numGpus
+			}
+		}
+
+		// - sum gpu numbers over offers minimal chunk offers
+		totalGpus := 0
+		usedGpus := 0
+		for _, offer := range offers {
+			numGpus := int(offer["num_gpus"].(float64))
+			rentable := offer["rentable"].(bool)
+			if numGpus == minChunkSize {
+				totalGpus += numGpus
+				if !rentable {
+					usedGpus += numGpus
 				}
 			}
-			return result
-		},
-	)
+		}
+
+		// - find whole machine offer
+		var wholeOffers []VastAiRawOffer
+		for _, offer := range offers {
+			gpuFrac := offer["gpu_frac"].(float64)
+			if gpuFrac == 1 {
+				wholeOffers = append(wholeOffers, offer)
+			}
+		}
+
+		// - validate: there must be exactly one whole machine offer
+		if len(wholeOffers) == 0 {
+			log.Errorln(fmt.Sprintf("No offers with gpu_frac=1 for machine %d", machineId))
+			continue
+		}
+		if len(wholeOffers) > 1 {
+			log.Errorln(fmt.Sprintf("Multiple offers with gpu_frac=1 for machine %d: %v", machineId, wholeOffers))
+			continue
+		}
+		wholeOffer := wholeOffers[0]
+
+		// - validate: sum of numGpus of minimal rental chunks must equal to total numGpus of the machine
+		machineGpus := int(wholeOffer["num_gpus"].(float64))
+		if totalGpus != machineGpus {
+			log.Errorln(fmt.Sprintf("GPU number mismtach for machine %d: machine has %d GPUs, min chunks sum up to %d GPUs: %v",
+				machineId, machineGpus, totalGpus, offers))
+			continue
+		}
+
+		// - produce modified offer record with added num_gpus_rented and removed gpu_frac etc
+		newOffer := VastAiRawOffer{
+			"num_gpus_rented": usedGpus,
+		}
+		for k, v := range wholeOffer {
+			if k != "gpu_frac" && k != "rentable" && k != "bundle_id" && k != "cpu_cores_effective" {
+				newOffer[k] = v
+			}
+		}
+		result = append(result, newOffer)
+	}
+
+	return result
 }
 
 func (offers VastAiRawOffers) decode() VastAiOffers {
 	result := VastAiOffers{}
 	for _, offer := range offers {
-		machineId, ok1 := offer["machine_id"].(float64)
-		gpuName, ok2 := offer["gpu_name"].(string)
-		numGpus, ok3 := offer["num_gpus"].(float64)
-		gpuFrac, ok4 := offer["gpu_frac"].(float64)
-		dphBase, ok5 := offer["dph_base"].(float64)
-		if ok1 && ok2 && ok3 && ok4 && ok5 {
-			result = append(result, VastAiOffer{
-				MachineId: int(machineId),
-				GpuName:   gpuName,
-				NumGpus:   int(numGpus),
-				GpuFrac:   gpuFrac,
-				DphBase:   dphBase,
-				Verified:  offer["verified"].(bool),
-			})
-		} else {
-			// this happens often for some offers, probably just listed - ignoring for now
-			// log.Errorln("Invalid offer record:", offer)
-		}
+		numGpus := offer["num_gpus"].(float64)
+		result = append(result, VastAiOffer{
+			MachineId:     int(offer["machine_id"].(float64)),
+			GpuName:       offer["gpu_name"].(string),
+			NumGpus:       int(numGpus),
+			NumGpusRented: int(offer["num_gpus_rented"].(int)),
+			PricePerGpu:   offer["dph_base"].(float64) / numGpus,
+			Verified:      offer["verified"].(bool),
+		})
 	}
 	return result
 }
@@ -154,7 +241,7 @@ func (offers VastAiOffers) filterUnverified() VastAiOffers {
 func (offers VastAiOffers) stats() OfferStats {
 	prices := []float64{}
 	for _, offer := range offers {
-		pricePerGpu := offer.DphBase / float64(offer.NumGpus)
+		pricePerGpu := offer.PricePerGpu
 		for i := 0; i < offer.NumGpus; i++ {
 			prices = append(prices, pricePerGpu)
 		}

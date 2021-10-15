@@ -9,17 +9,19 @@ import (
 )
 
 type OfferCache struct {
-	offers    VastAiOffers
-	rawOffers VastAiRawOffers
-	ts        time.Time
+	rawOffers             VastAiRawOffers
+	wholeMachineRawOffers VastAiRawOffers
+	machines              VastAiOffers
+	ts                    time.Time
 }
 
 var offerCache OfferCache
 
 func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 	if apiRes.offersVerified != nil && apiRes.offersUnverified != nil {
-		cache.rawOffers = mergeRawOffers(*apiRes.offersVerified, *apiRes.offersUnverified)
-		cache.offers = cache.rawOffers.filterWholeMachines().decode()
+		cache.rawOffers = mergeRawOffers(*apiRes.offersVerified, *apiRes.offersUnverified).validate()
+		cache.wholeMachineRawOffers = cache.rawOffers.validate().filterWholeMachines()
+		cache.machines = cache.wholeMachineRawOffers.decode()
 		cache.ts = apiRes.ts
 	}
 }
@@ -40,12 +42,13 @@ type RawOffersResponse struct {
 }
 
 func (cache *OfferCache) rawOffersJson(wholeMachines bool) []byte {
-	offers := &cache.rawOffers
+	var offers *VastAiRawOffers
 	url := "/raw-offers"
 	if wholeMachines {
-		filtered := offers.filterWholeMachines()
-		offers = &filtered
+		offers = &cache.wholeMachineRawOffers
 		url += "/whole-machines"
+	} else {
+		offers = &cache.rawOffers
 	}
 	result, err := json.MarshalIndent(RawOffersResponse{
 		Url:       url,
