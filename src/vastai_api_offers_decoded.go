@@ -11,7 +11,7 @@ type VastAiOffer struct {
 	GpuName       string
 	NumGpus       int
 	NumGpusRented int
-	PricePerGpu   float64
+	PricePerGpu   int // in cents
 	Verified      bool
 }
 type VastAiOffers []VastAiOffer
@@ -40,7 +40,7 @@ func (offers VastAiRawOffers) decode() VastAiOffers {
 			GpuName:       offer["gpu_name"].(string),
 			NumGpus:       int(numGpus),
 			NumGpusRented: int(offer["num_gpus_rented"].(int)),
-			PricePerGpu:   offer["dph_base"].(float64) / numGpus,
+			PricePerGpu:   int(offer["dph_base"].(float64) * 100 / numGpus),
 			Verified:      offer["verified"].(bool),
 		})
 	}
@@ -109,7 +109,7 @@ func (offers VastAiOffers) stats() OfferStats {
 	for _, offer := range offers {
 		pricePerGpu := offer.PricePerGpu
 		for i := 0; i < offer.NumGpus; i++ {
-			prices = append(prices, pricePerGpu)
+			prices = append(prices, float64(pricePerGpu))
 		}
 	}
 

@@ -267,13 +267,13 @@ func (e *VastAiCollector) UpdateFrom(info VastAiApiResults, offerCache *OfferCac
 			e.gpu_count.With(labels).Set(float64(stats.Count))
 		}
 		if !math.IsNaN(stats.Median) {
-			e.ondemand_price_median_dollars.With(labels).Set(stats.Median)
+			e.ondemand_price_median_dollars.With(labels).Set(stats.Median / 100)
 		} else {
 			e.ondemand_price_median_dollars.Delete(labels)
 		}
 		if !math.IsNaN(stats.PercentileLow) && !math.IsNaN(stats.PercentileHigh) {
-			e.ondemand_price_10th_percentile_dollars.With(labels).Set(stats.PercentileLow)
-			e.ondemand_price_90th_percentile_dollars.With(labels).Set(stats.PercentileHigh)
+			e.ondemand_price_10th_percentile_dollars.With(labels).Set(stats.PercentileLow / 100)
+			e.ondemand_price_90th_percentile_dollars.With(labels).Set(stats.PercentileHigh / 100)
 		} else {
 			e.ondemand_price_10th_percentile_dollars.Delete(labels)
 			e.ondemand_price_90th_percentile_dollars.Delete(labels)
