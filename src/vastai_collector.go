@@ -53,7 +53,7 @@ func newVastAiCollector() *VastAiCollector {
 
 	instanceLabelNames := []string{"instance_id", "machine_id", "rental_type"}
 	instanceInfoLabelNamess := append(append([]string{}, instanceLabelNames...), "docker_image", "gpu_name")
-	gpuStatsLabelNames := []string{"gpu_name", "verified"}
+	gpuStatsLabelNames := []string{"gpu_name", "verified", "rented"}
 
 	return &VastAiCollector{
 		knownInstances: make(instanceInfoMap),
@@ -262,8 +262,10 @@ func (e *VastAiCollector) UpdateFrom(info VastAiApiResults, offerCache *OfferCac
 		},
 	).groupByGpu()
 
-	updateMetrics := func(labels prometheus.Labels, stats OfferStats) {
-		e.gpu_count.With(labels).Set(float64(stats.Count))
+	updateMetrics := func(labels prometheus.Labels, stats OfferStats, needCount bool) {
+		if needCount {
+			e.gpu_count.With(labels).Set(float64(stats.Count))
+		}
 		if !math.IsNaN(stats.Median) {
 			e.ondemand_price_median_dollars.With(labels).Set(stats.Median)
 		} else {
@@ -279,19 +281,16 @@ func (e *VastAiCollector) UpdateFrom(info VastAiApiResults, offerCache *OfferCac
 	}
 
 	for _, gpuName := range myGpus {
-		stats := groupedOffers[gpuName].stats2()
-		updateMetrics(
-			prometheus.Labels{"gpu_name": gpuName, "verified": "yes"},
-			stats.Verified,
-		)
-		updateMetrics(
-			prometheus.Labels{"gpu_name": gpuName, "verified": "no"},
-			stats.Unverified,
-		)
-		updateMetrics(
-			prometheus.Labels{"gpu_name": gpuName, "verified": "any"},
-			stats.All,
-		)
+		stats := groupedOffers[gpuName].stats3()
+		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "yes", "rented": "yes"}, stats.Rented.Verified, true)
+		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "no", "rented": "yes"}, stats.Rented.Unverified, true)
+		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "any", "rented": "yes"}, stats.Rented.All, false)
+		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "yes", "rented": "no"}, stats.Available.Verified, true)
+		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "no", "rented": "no"}, stats.Available.Unverified, true)
+		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "any", "rented": "no"}, stats.Available.All, false)
+		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "yes", "rented": "any"}, stats.All.Verified, false)
+		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "no", "rented": "any"}, stats.All.Unverified, false)
+		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "any", "rented": "any"}, stats.All.All, false)
 	}
 
 	// process machines
