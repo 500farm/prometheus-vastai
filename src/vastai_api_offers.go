@@ -97,9 +97,9 @@ func (offers VastAiRawOffers) filter2(filter func(VastAiRawOffer) bool, postProc
 }
 
 func (offers VastAiRawOffers) validate() VastAiRawOffers {
-	return offers.filter(func(offer VastAiRawOffer) bool {
+	invalid := 0
+	result := offers.filter(func(offer VastAiRawOffer) bool {
 		// check if required fields are ok and have a correct type
-		// (e.g. for some machines gpu_frac can be null for unknown reason)
 		_, ok1 := offer["machine_id"].(float64)
 		_, ok2 := offer["gpu_name"].(string)
 		_, ok3 := offer["num_gpus"].(float64)
@@ -109,10 +109,14 @@ func (offers VastAiRawOffers) validate() VastAiRawOffers {
 		if ok1 && ok2 && ok3 && ok4 && ok5 && ok6 {
 			return true
 		}
-		// this happens often for some offers, probably just listed - ignoring for now
-		// log.Errorln("Invalid offer record:", offer)
+		invalid++
 		return false
 	})
+	if invalid > 0 {
+		// this happens often when gpu_frac=nil
+		log.Warnln(fmt.Sprintf("Data inconsistency: %d records with missing required fields", invalid))
+	}
+	return result
 }
 
 func (offers VastAiRawOffers) groupByMachineId() map[int]VastAiRawOffers {
@@ -163,11 +167,13 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 
 		// - validate: there must be exactly one whole machine offer
 		if len(wholeOffers) == 0 {
-			log.Errorln(fmt.Sprintf("No offers with gpu_frac=1 for machine %d", machineId))
+			log.Warnln(fmt.Sprintf("Data inconsistency: no offers with gpu_frac=1 for machine %d",
+				machineId))
 			continue
 		}
 		if len(wholeOffers) > 1 {
-			log.Errorln(fmt.Sprintf("Multiple offers with gpu_frac=1 for machine %d: %v", machineId, wholeOffers))
+			log.Warnln(fmt.Sprintf("Data inconsistency: multiple offers with gpu_frac=1 for machine %d",
+				machineId))
 			continue
 		}
 		wholeOffer := wholeOffers[0]
@@ -175,8 +181,8 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 		// - validate: sum of numGpus of minimal rental chunks must equal to total numGpus of the machine
 		machineGpus := int(wholeOffer["num_gpus"].(float64))
 		if totalGpus != machineGpus {
-			log.Errorln(fmt.Sprintf("GPU number mismtach for machine %d: machine has %d GPUs, min chunks sum up to %d GPUs: %v",
-				machineId, machineGpus, totalGpus, offers))
+			log.Warnln(fmt.Sprintf("Data inconsistency: machine %d has %d GPUs, min chunks sum up to %d GPUs",
+				machineId, machineGpus, totalGpus))
 			continue
 		}
 
