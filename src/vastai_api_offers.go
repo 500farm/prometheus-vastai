@@ -63,21 +63,38 @@ func mergeRawOffers(verified VastAiRawOffers, unverified VastAiRawOffers) VastAi
 	return result
 }
 
-func (offers VastAiRawOffers) filter(filter func(*VastAiRawOffer) bool) VastAiRawOffers {
+func (offers VastAiRawOffers) filter(filter func(VastAiRawOffer) bool) VastAiRawOffers {
+	return offers.filter2(filter, nil)
+}
+
+func (offers VastAiRawOffers) filter2(filter func(VastAiRawOffer) bool, postProcess func(VastAiRawOffer) VastAiRawOffer) VastAiRawOffers {
 	result := VastAiRawOffers{}
 	for _, offer := range offers {
-		if filter(&offer) {
-			result = append(result, offer)
+		if filter(offer) {
+			if postProcess != nil {
+				result = append(result, postProcess(offer))
+			} else {
+				result = append(result, offer)
+			}
 		}
 	}
 	return result
 }
 
 func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
-	return offers.filter(
-		func(offer *VastAiRawOffer) bool {
-			frac, ok := (*offer)["gpu_frac"].(float64)
+	return offers.filter2(
+		func(offer VastAiRawOffer) bool {
+			frac, ok := offer["gpu_frac"].(float64)
 			return ok && frac == 1
+		},
+		func(offer VastAiRawOffer) VastAiRawOffer {
+			result := VastAiRawOffer{}
+			for k, v := range offer {
+				if k != "gpu_frac" {
+					result[k] = v
+				}
+			}
+			return result
 		},
 	)
 }
