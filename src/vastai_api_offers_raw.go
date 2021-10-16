@@ -91,7 +91,7 @@ func (offers VastAiRawOffers) validate() VastAiRawOffers {
 	})
 	if invalid > 0 {
 		// this happens often when gpu_frac=nil
-		log.Warnln(fmt.Sprintf("Data inconsistency: %d records with missing required fields", invalid))
+		log.Warnln(fmt.Sprintf("Offer list inconsistency: %d offers with missing required fields", invalid))
 	}
 	return result
 }
@@ -144,12 +144,12 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 
 		// - validate: there must be exactly one whole machine offer
 		if len(wholeOffers) == 0 {
-			log.Warnln(fmt.Sprintf("Data inconsistency: no offers with gpu_frac=1 for machine %d",
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: no offers with gpu_frac=1 for machine %d",
 				machineId))
 			continue
 		}
 		if len(wholeOffers) > 1 {
-			log.Warnln(fmt.Sprintf("Data inconsistency: multiple offers with gpu_frac=1 for machine %d",
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: multiple offers with gpu_frac=1 for machine %d",
 				machineId))
 			continue
 		}
@@ -158,7 +158,7 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 		// - validate: sum of numGpus of minimal rental chunks must equal to total numGpus of the machine
 		machineGpus := int(wholeOffer["num_gpus"].(float64))
 		if totalGpus != machineGpus {
-			log.Warnln(fmt.Sprintf("Data inconsistency: machine %d has %d GPUs, min chunks sum up to %d GPUs",
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has %d GPUs, min chunks sum up to %d GPUs",
 				machineId, machineGpus, totalGpus))
 			continue
 		}
