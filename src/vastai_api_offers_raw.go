@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"sort"
 
 	"github.com/prometheus/common/log"
 )
@@ -140,15 +141,25 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 			}
 		}
 
+		// collect list of chunks log message
+		chunkList := func() []int {
+			chunks := make([]int, 0, len(offers))
+			for _, offer := range offers {
+				chunks = append(chunks, offer.numGpus())
+			}
+			sort.Ints(chunks)
+			return chunks
+		}
+
 		// - validate: there must be exactly one whole machine offer
 		if len(wholeOffers) == 0 {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: no offers with gpu_frac=1 for machine %d",
-				machineId))
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: no offers with gpu_frac=1 for machine %d [chunks=%v]",
+				machineId, chunkList()))
 			continue
 		}
 		if len(wholeOffers) > 1 {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: multiple offers with gpu_frac=1 for machine %d",
-				machineId))
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: multiple offers with gpu_frac=1 for machine %d [chunks=%v]",
+				machineId, chunkList()))
 			continue
 		}
 		wholeOffer := wholeOffers[0]
@@ -156,8 +167,8 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 		// - validate: sum of numGpus of minimal rental chunks must equal to total numGpus of the machine
 		machineGpus := wholeOffer.numGpus()
 		if totalGpus != machineGpus {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has %d GPUs, min chunks sum up to %d GPUs",
-				machineId, machineGpus, totalGpus))
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has %d GPUs, min chunks sum up to %d GPUs [chunks=%v]",
+				machineId, machineGpus, totalGpus, chunkList()))
 			continue
 		}
 
