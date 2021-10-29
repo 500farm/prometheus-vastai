@@ -99,7 +99,7 @@ func (offers VastAiRawOffers) validate() VastAiRawOffers {
 func (offers VastAiRawOffers) groupByMachineId() map[int]VastAiRawOffers {
 	grouped := make(map[int]VastAiRawOffers)
 	for _, offer := range offers {
-		machineId := int(offer["machine_id"].(float64))
+		machineId := offer.machineId()
 		grouped[machineId] = append(grouped[machineId], offer)
 	}
 	return grouped
@@ -113,7 +113,7 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 		// - find out minimal chunk size
 		minChunkSize := 10000
 		for _, offer := range offers {
-			numGpus := int(offer["num_gpus"].(float64))
+			numGpus := offer.numGpus()
 			if numGpus < minChunkSize {
 				minChunkSize = numGpus
 			}
@@ -123,11 +123,10 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 		totalGpus := 0
 		usedGpus := 0
 		for _, offer := range offers {
-			numGpus := int(offer["num_gpus"].(float64))
-			rentable := offer["rentable"].(bool)
+			numGpus := offer.numGpus()
 			if numGpus == minChunkSize {
 				totalGpus += numGpus
-				if !rentable {
+				if !offer.rentable() {
 					usedGpus += numGpus
 				}
 			}
@@ -136,8 +135,7 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 		// - find whole machine offer
 		var wholeOffers []VastAiRawOffer
 		for _, offer := range offers {
-			gpuFrac := offer["gpu_frac"].(float64)
-			if gpuFrac == 1 {
+			if offer.gpuFrac() == 1 {
 				wholeOffers = append(wholeOffers, offer)
 			}
 		}
@@ -156,7 +154,7 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 		wholeOffer := wholeOffers[0]
 
 		// - validate: sum of numGpus of minimal rental chunks must equal to total numGpus of the machine
-		machineGpus := int(wholeOffer["num_gpus"].(float64))
+		machineGpus := wholeOffer.numGpus()
 		if totalGpus != machineGpus {
 			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has %d GPUs, min chunks sum up to %d GPUs",
 				machineId, machineGpus, totalGpus))
@@ -176,4 +174,36 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 	}
 
 	return result
+}
+
+func (offer VastAiRawOffer) numGpus() int {
+	return int(offer["num_gpus"].(float64))
+}
+
+func (offer VastAiRawOffer) numGpusRented() int {
+	return offer["num_gpus_rented"].(int)
+}
+
+func (offer VastAiRawOffer) gpuFrac() float64 {
+	return offer["gpu_frac"].(float64)
+}
+
+func (offer VastAiRawOffer) pricePerGpu() int { // in cents
+	return int(offer["dph_base"].(float64) / offer["num_gpus"].(float64) * 100)
+}
+
+func (offer VastAiRawOffer) machineId() int {
+	return int(offer["machine_id"].(float64))
+}
+
+func (offer VastAiRawOffer) gpuName() string {
+	return offer["gpu_name"].(string)
+}
+
+func (offer VastAiRawOffer) verified() bool {
+	return offer["verified"].(bool)
+}
+
+func (offer VastAiRawOffer) rentable() bool {
+	return offer["rentable"].(bool)
 }

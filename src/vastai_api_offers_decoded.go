@@ -34,14 +34,13 @@ type OfferStats3 struct {
 func (offers VastAiRawOffers) decode() VastAiOffers {
 	result := VastAiOffers{}
 	for _, offer := range offers {
-		numGpus := offer["num_gpus"].(float64)
 		result = append(result, VastAiOffer{
-			MachineId:     int(offer["machine_id"].(float64)),
-			GpuName:       offer["gpu_name"].(string),
-			NumGpus:       int(numGpus),
-			NumGpusRented: int(offer["num_gpus_rented"].(int)),
-			PricePerGpu:   int(offer["dph_base"].(float64) * 100 / numGpus),
-			Verified:      offer["verified"].(bool),
+			MachineId:     offer.machineId(),
+			GpuName:       offer.gpuName(),
+			NumGpus:       offer.numGpus(),
+			NumGpusRented: offer.numGpusRented(),
+			PricePerGpu:   offer.pricePerGpu(),
+			Verified:      offer.verified(),
 		})
 	}
 	return result
