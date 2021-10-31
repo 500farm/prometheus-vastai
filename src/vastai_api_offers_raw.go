@@ -189,6 +189,7 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 		// - produce modified offer record with added num_gpus_rented and removed gpu_frac etc
 		newOffer := VastAiRawOffer{
 			"num_gpus_rented": usedGpus,
+			"min_chunk":       minChunkSize,
 		}
 		for k, v := range wholeOffer {
 			if k != "gpu_frac" && k != "rentable" && k != "bundle_id" && k != "cpu_cores_effective" {
