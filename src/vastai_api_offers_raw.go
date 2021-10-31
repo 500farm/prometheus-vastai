@@ -75,27 +75,39 @@ func (offers VastAiRawOffers) filter2(filter func(VastAiRawOffer) bool, postProc
 }
 
 func (offers VastAiRawOffers) validate() VastAiRawOffers {
-	invalid := make(map[int][]string)
+	hasInvalidItems := make(map[int]bool)
+
 	result := offers.filter(func(offer VastAiRawOffer) bool {
 		// check if required fields are ok and have a correct type
 		// this happens often when gpu_frac=nil
-		_machineId, ok1 := offer["machine_id"].(float64)
+		machineId, ok1 := offer["machine_id"].(float64)
 		_, ok2 := offer["gpu_name"].(string)
-		numGpus, ok3 := offer["num_gpus"].(float64)
-		gpuFrac, ok4 := offer["gpu_frac"].(float64)
+		_, ok3 := offer["num_gpus"].(float64)
+		_, ok4 := offer["gpu_frac"].(float64)
 		_, ok5 := offer["dph_base"].(float64)
 		_, ok6 := offer["rentable"].(bool)
 		if ok1 && ok2 && ok3 && ok4 && ok5 && ok6 {
 			return true
 		}
-		machineId := int(_machineId)
-		invalid[machineId] = append(invalid[machineId], fmt.Sprintf("n=%d/f=%.2f", int(numGpus), gpuFrac))
+		hasInvalidItems[int(machineId)] = true
 		return false
 	})
-	for machineId, items := range invalid {
+
+	// log invalid offers
+	for machineId := range hasInvalidItems {
+		strings := []string{}
+		for _, offer := range offers {
+			mId, ok := offer["machine_id"].(float64)
+			if ok && int(mId) == machineId {
+				numGpus, _ := offer["num_gpus"].(float64)
+				gpuFrac, _ := offer["gpu_frac"].(float64)
+				strings = append(strings, fmt.Sprintf("%d/%.2f", int(numGpus), gpuFrac))
+			}
+		}
 		log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has offers with missing required fields %v",
-			machineId, items))
+			machineId, strings))
 	}
+
 	return result
 }
 
