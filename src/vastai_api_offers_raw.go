@@ -75,10 +75,10 @@ func (offers VastAiRawOffers) filter2(filter func(VastAiRawOffer) bool, postProc
 }
 
 func (offers VastAiRawOffers) validate() VastAiRawOffers {
-	invalid := 0
+	invalid := []int{}
 	result := offers.filter(func(offer VastAiRawOffer) bool {
 		// check if required fields are ok and have a correct type
-		_, ok1 := offer["machine_id"].(float64)
+		machineId, ok1 := offer["machine_id"].(float64)
 		_, ok2 := offer["gpu_name"].(string)
 		_, ok3 := offer["num_gpus"].(float64)
 		_, ok4 := offer["gpu_frac"].(float64)
@@ -87,12 +87,13 @@ func (offers VastAiRawOffers) validate() VastAiRawOffers {
 		if ok1 && ok2 && ok3 && ok4 && ok5 && ok6 {
 			return true
 		}
-		invalid++
+		invalid = append(invalid, int(machineId))
 		return false
 	})
-	if invalid > 0 {
+	if len(invalid) > 0 {
 		// this happens often when gpu_frac=nil
-		log.Warnln(fmt.Sprintf("Offer list inconsistency: %d offers with missing required fields", invalid))
+		log.Warnln(fmt.Sprintf("Offer list inconsistency: %d offers with missing required fields (machineIds=%v)",
+			len(invalid), invalid))
 	}
 	return result
 }
@@ -153,12 +154,12 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 
 		// - validate: there must be exactly one whole machine offer
 		if len(wholeOffers) == 0 {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: no offers with gpu_frac=1 for machine %d [chunks=%v]",
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: no offers with gpu_frac=1 for machine %d (chunks=%v)",
 				machineId, chunkList()))
 			continue
 		}
 		if len(wholeOffers) > 1 {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: multiple offers with gpu_frac=1 for machine %d [chunks=%v]",
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: multiple offers with gpu_frac=1 for machine %d (chunks=%v)",
 				machineId, chunkList()))
 			continue
 		}
@@ -167,7 +168,7 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 		// - validate: sum of numGpus of minimal rental chunks must equal to total numGpus of the machine
 		machineGpus := wholeOffer.numGpus()
 		if totalGpus != machineGpus {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has %d GPUs, min chunks sum up to %d GPUs [chunks=%v]",
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has %d GPUs, min chunks sum up to %d GPUs (chunks=%v)",
 				machineId, machineGpus, totalGpus, chunkList()))
 			continue
 		}
