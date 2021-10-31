@@ -75,37 +75,31 @@ func (offers VastAiRawOffers) filter2(filter func(VastAiRawOffer) bool, postProc
 }
 
 func (offers VastAiRawOffers) validate() VastAiRawOffers {
-	hasInvalidItems := make(map[int]bool)
-
 	result := offers.filter(func(offer VastAiRawOffer) bool {
 		// check if required fields are ok and have a correct type
-		// this happens often when gpu_frac=nil
-		machineId, ok1 := offer["machine_id"].(float64)
+		_, ok1 := offer["machine_id"].(float64)
 		_, ok2 := offer["gpu_name"].(string)
 		_, ok3 := offer["num_gpus"].(float64)
-		_, ok4 := offer["gpu_frac"].(float64)
-		_, ok5 := offer["dph_base"].(float64)
-		_, ok6 := offer["rentable"].(bool)
-		if ok1 && ok2 && ok3 && ok4 && ok5 && ok6 {
+		_, ok4 := offer["dph_base"].(float64)
+		_, ok5 := offer["rentable"].(bool)
+		if ok1 && ok2 && ok3 && ok4 && ok5 {
 			return true
 		}
-		hasInvalidItems[int(machineId)] = true
+		log.Warnln(fmt.Sprintf("Offer is missing required fields: %v", offer))
 		return false
 	})
 
-	// log invalid offers
-	for machineId := range hasInvalidItems {
-		strings := []string{}
+	// also log offers with gpu_frac=null (this happens for whatever reason)
+	for machineId, offers := range offers.groupByMachineId() {
+		bad := false
 		for _, offer := range offers {
-			mId, ok := offer["machine_id"].(float64)
-			if ok && int(mId) == machineId {
-				numGpus, _ := offer["num_gpus"].(float64)
-				gpuFrac, _ := offer["gpu_frac"].(float64)
-				strings = append(strings, fmt.Sprintf("%d/%.2f", int(numGpus), gpuFrac))
+			if _, ok := offer["gpu_frac"].(float64); !ok {
+				bad = true
 			}
 		}
-		log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has offers with missing required fields %v",
-			machineId, strings))
+		if bad {
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has offers with gpu_frac=null", machineId))
+		}
 	}
 
 	return result
@@ -125,16 +119,20 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 
 	for machineId, offers := range offers.groupByMachineId() {
 		// for each machine:
-		// - find out minimal chunk size
+		// - find out smallest and largest chunk size
 		minChunkSize := 10000
+		maxChunkSize := 0
 		for _, offer := range offers {
 			numGpus := offer.numGpus()
 			if numGpus < minChunkSize {
 				minChunkSize = numGpus
 			}
+			if numGpus > maxChunkSize {
+				maxChunkSize = numGpus
+			}
 		}
 
-		// - sum gpu numbers over offers minimal chunk offers
+		// - sum gpu numbers over offers smallest chunk offers
 		totalGpus := 0
 		usedGpus := 0
 		for _, offer := range offers {
@@ -150,39 +148,22 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 		// - find whole machine offer
 		var wholeOffers []VastAiRawOffer
 		for _, offer := range offers {
-			if offer.gpuFrac() == 1 {
+			if offer.numGpus() == maxChunkSize {
 				wholeOffers = append(wholeOffers, offer)
 			}
 		}
 
-		// collect list of chunks log message
-		chunkList := func() []int {
+		// - validate: there must be exactly one whole machine offer, and smallest chunks must sum up to 1 largest chunk
+		if len(wholeOffers) != 1 || wholeOffers[0].numGpus() != totalGpus {
+			// collect list of chunks log message
 			chunks := make([]int, 0, len(offers))
 			for _, offer := range offers {
 				chunks = append(chunks, offer.numGpus())
 			}
 			sort.Ints(chunks)
-			return chunks
-		}
 
-		// - validate: there must be exactly one whole machine offer
-		if len(wholeOffers) == 0 {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: no offers with gpu_frac=1 for machine %d (chunks=%v)",
-				machineId, chunkList()))
-			continue
-		}
-		if len(wholeOffers) > 1 {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: multiple offers with gpu_frac=1 for machine %d (chunks=%v)",
-				machineId, chunkList()))
-			continue
-		}
-		wholeOffer := wholeOffers[0]
-
-		// - validate: sum of numGpus of minimal rental chunks must equal to total numGpus of the machine
-		machineGpus := wholeOffer.numGpus()
-		if totalGpus != machineGpus {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has %d GPUs, min chunks sum up to %d GPUs (chunks=%v)",
-				machineId, machineGpus, totalGpus, chunkList()))
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has invalid chunk split (chunks=%v)",
+				machineId, chunks))
 			continue
 		}
 
@@ -191,7 +172,7 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 			"num_gpus_rented": usedGpus,
 			"min_chunk":       minChunkSize,
 		}
-		for k, v := range wholeOffer {
+		for k, v := range wholeOffers[0] {
 			if k != "gpu_frac" && k != "rentable" && k != "bundle_id" && k != "cpu_cores_effective" {
 				newOffer[k] = v
 			}
@@ -208,10 +189,6 @@ func (offer VastAiRawOffer) numGpus() int {
 
 func (offer VastAiRawOffer) numGpusRented() int {
 	return offer["num_gpus_rented"].(int)
-}
-
-func (offer VastAiRawOffer) gpuFrac() float64 {
-	return offer["gpu_frac"].(float64)
 }
 
 func (offer VastAiRawOffer) pricePerGpu() int { // in cents
