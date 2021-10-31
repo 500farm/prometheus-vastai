@@ -75,24 +75,24 @@ func (offers VastAiRawOffers) filter2(filter func(VastAiRawOffer) bool, postProc
 }
 
 func (offers VastAiRawOffers) validate() VastAiRawOffers {
-	invalid := []int{}
+	invalid := []string{}
 	result := offers.filter(func(offer VastAiRawOffer) bool {
 		// check if required fields are ok and have a correct type
 		machineId, ok1 := offer["machine_id"].(float64)
 		_, ok2 := offer["gpu_name"].(string)
-		_, ok3 := offer["num_gpus"].(float64)
-		_, ok4 := offer["gpu_frac"].(float64)
+		numGpus, ok3 := offer["num_gpus"].(float64)
+		gpuFrac, ok4 := offer["gpu_frac"].(float64)
 		_, ok5 := offer["dph_base"].(float64)
 		_, ok6 := offer["rentable"].(bool)
 		if ok1 && ok2 && ok3 && ok4 && ok5 && ok6 {
 			return true
 		}
-		invalid = append(invalid, int(machineId))
+		invalid = append(invalid, fmt.Sprintf("%d/%d/%.2f", int(machineId), int(numGpus), gpuFrac))
 		return false
 	})
 	if len(invalid) > 0 {
 		// this happens often when gpu_frac=nil
-		log.Warnln(fmt.Sprintf("Offer list inconsistency: %d offers with missing required fields (machineIds=%v)",
+		log.Warnln(fmt.Sprintf("Offer list inconsistency: %d offers with missing required fields %v",
 			len(invalid), invalid))
 	}
 	return result
