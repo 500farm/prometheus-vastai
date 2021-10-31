@@ -162,7 +162,7 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 			}
 			sort.Ints(chunks)
 
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has invalid chunk split (chunks=%v)",
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has invalid chunk split %v",
 				machineId, chunks))
 			continue
 		}
