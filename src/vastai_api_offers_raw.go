@@ -167,6 +167,7 @@ func (offers VastAiRawOffers) filterWholeMachines(prevResult VastAiRawOffers) Va
 			for _, prevOffer := range prevResult {
 				if prevOffer.machineId() == machineId {
 					result = append(result, prevOffer)
+					break
 				}
 			}
 
