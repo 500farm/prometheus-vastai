@@ -119,25 +119,38 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 
 	for machineId, offers := range offers.groupByMachineId() {
 		// for each machine:
-		// - find out smallest and largest chunk size
-		minChunkSize := 10000
-		maxChunkSize := 0
+
+		// - collect array of chunks from smallest to largest
+		chunks := make([]int, 0, len(offers))
 		for _, offer := range offers {
-			numGpus := offer.numGpus()
-			if numGpus < minChunkSize {
-				minChunkSize = numGpus
-			}
-			if numGpus > maxChunkSize {
-				maxChunkSize = numGpus
-			}
+			chunks = append(chunks, offer.numGpus())
+		}
+		sort.Ints(chunks)
+
+		// - create map: chunk size => number of chunks of this size
+		countBySize := make(map[int]int)
+		for _, size := range chunks {
+			countBySize[size]++
 		}
 
-		// - sum gpu numbers over offers smallest chunk offers
+		// - find out smallest and largest chunk size
+		minChunkSize := chunks[0]
+		wholeMachineSize := chunks[len(chunks)-1]
+
+		// - correction for the case where whole machine size is not a multiple of min_chunk
+		// - in this case, there is always a single remainder chunk which is smaller than actual min_chunk
+		//   examples: [1 2 2 2 3 4 7] [1 2 3], actual min_chunk is 2
+		//             [3 4 7], actual min_chunk is 4
+		if countBySize[minChunkSize] == 1 && len(chunks) >= 3 {
+			minChunkSize = chunks[1]
+		}
+
+		// - iterate over non-dividable chunks and sum up GPU counts
 		totalGpus := 0
 		usedGpus := 0
 		for _, offer := range offers {
 			numGpus := offer.numGpus()
-			if numGpus == minChunkSize {
+			if numGpus <= minChunkSize {
 				totalGpus += numGpus
 				if !offer.rentable() {
 					usedGpus += numGpus
@@ -145,26 +158,20 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 			}
 		}
 
-		// - find whole machine offer
-		var wholeOffers []VastAiRawOffer
-		for _, offer := range offers {
-			if offer.numGpus() == maxChunkSize {
-				wholeOffers = append(wholeOffers, offer)
-			}
-		}
-
-		// - validate: there must be exactly one whole machine offer, and smallest chunks must sum up to 1 largest chunk
-		if len(wholeOffers) != 1 || wholeOffers[0].numGpus() != totalGpus {
-			// collect list of chunks log message
-			chunks := make([]int, 0, len(offers))
-			for _, offer := range offers {
-				chunks = append(chunks, offer.numGpus())
-			}
-			sort.Ints(chunks)
-
+		// - validate: there must be exactly one whole machine offer, and non-dividable chunks must sum up to the machine size
+		if countBySize[wholeMachineSize] != 1 || wholeMachineSize != totalGpus {
 			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has invalid chunk split %v",
 				machineId, chunks))
 			continue
+		}
+
+		// - find whole machine offer (with size=wholeMachineSize)
+		var wholeOffer VastAiRawOffer
+		for _, offer := range offers {
+			if offer.numGpus() == wholeMachineSize {
+				wholeOffer = offer
+				break
+			}
 		}
 
 		// - produce modified offer record with added num_gpus_rented and removed gpu_frac etc
@@ -172,7 +179,7 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 			"num_gpus_rented": usedGpus,
 			"min_chunk":       minChunkSize,
 		}
-		for k, v := range wholeOffers[0] {
+		for k, v := range wholeOffer {
 			if k != "gpu_frac" && k != "rentable" && k != "bundle_id" && k != "cpu_cores_effective" {
 				newOffer[k] = v
 			}
