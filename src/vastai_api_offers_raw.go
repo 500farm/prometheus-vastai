@@ -114,7 +114,7 @@ func (offers VastAiRawOffers) groupByMachineId() map[int]VastAiRawOffers {
 	return grouped
 }
 
-func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
+func (offers VastAiRawOffers) filterWholeMachines(prevResult VastAiRawOffers) VastAiRawOffers {
 	result := VastAiRawOffers{}
 
 	for machineId, offers := range offers.groupByMachineId() {
@@ -162,6 +162,14 @@ func (offers VastAiRawOffers) filterWholeMachines() VastAiRawOffers {
 		if countBySize[wholeMachineSize] != 1 || wholeMachineSize != totalGpus {
 			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has invalid chunk split %v",
 				machineId, chunks))
+
+			// preserve existing record for this machine (if exists)
+			for _, prevOffer := range prevResult {
+				if prevOffer.machineId() == machineId {
+					result = append(result, prevOffer)
+				}
+			}
+
 			continue
 		}
 
