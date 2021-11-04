@@ -31,7 +31,7 @@ func getRawOffersFromApi(result *VastAiApiResults) error {
 }
 
 func mergeRawOffers(verified VastAiRawOffers, unverified VastAiRawOffers) VastAiRawOffers {
-	result := VastAiRawOffers{}
+	result := make(VastAiRawOffers, 0, len(verified)+len(unverified))
 	for _, offer := range verified {
 		offer["verified"] = true
 		result = append(result, offer)
@@ -61,7 +61,7 @@ func (offers VastAiRawOffers) filter(filter func(VastAiRawOffer) bool) VastAiRaw
 }
 
 func (offers VastAiRawOffers) filter2(filter func(VastAiRawOffer) bool, postProcess func(VastAiRawOffer) VastAiRawOffer) VastAiRawOffers {
-	result := VastAiRawOffers{}
+	result := make(VastAiRawOffers, 0, len(offers))
 	for _, offer := range offers {
 		if filter(offer) {
 			if postProcess != nil {
@@ -115,7 +115,7 @@ func (offers VastAiRawOffers) groupByMachineId() map[int]VastAiRawOffers {
 }
 
 func (offers VastAiRawOffers) filterWholeMachines(prevResult VastAiRawOffers) VastAiRawOffers {
-	result := VastAiRawOffers{}
+	result := make(VastAiRawOffers, 0, len(prevResult))
 
 	for machineId, offers := range offers.groupByMachineId() {
 		// for each machine:

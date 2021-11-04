@@ -32,7 +32,7 @@ type OfferStats3 struct {
 }
 
 func (offers VastAiRawOffers) decode() VastAiOffers {
-	result := VastAiOffers{}
+	result := make(VastAiOffers, 0, len(offers))
 	for _, offer := range offers {
 		result = append(result, VastAiOffer{
 			MachineId:     offer.machineId(),
@@ -60,7 +60,7 @@ func (offers VastAiOffers) filter(filter func(VastAiOffer) bool) VastAiOffers {
 }
 
 func (offers VastAiOffers) filter2(filter func(VastAiOffer) bool, postProcess func(VastAiOffer) VastAiOffer) VastAiOffers {
-	result := VastAiOffers{}
+	result := make(VastAiOffers, 0, len(offers))
 	for _, offer := range offers {
 		if filter(offer) {
 			if postProcess != nil {
