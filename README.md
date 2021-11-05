@@ -12,9 +12,9 @@ Prometheus exporter reporting data from your Vast.ai account:
 
 In addition to per-account Prometheus metrics (url: `/metrics`), the exporter provides the following data:
 
-- Global stats over all types of GPUs (url: `/metrics/global`).
-- List of offers available on Vast.ai (url: `/offers`).
-- List of machines available on Vast.ai (url: `/machines`).
+- Global stats over all types of GPUs in Prometheus format (url: `/metrics/global`).
+- List of offers available on Vast.ai in JSON (url: `/offers`).
+- List of machines available on Vast.ai in JSON (url: `/machines`).
 
 _NOTE: This is a work in progress. Output format is subject to change._
 
