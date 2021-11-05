@@ -25,6 +25,7 @@ docker run -d --restart always -p 8622:8622 sergeycheperis/vastai-exporter --key
 ```
 Replace _VASTKEY_ with your Vast.ai API key. To test, open http://localhost:8622. If does not work, check container output with `docker logs`.
 
+Errors/warnings are printed to stderr and can be viewed with `docker logs`.
 
 ### Optional args
 
