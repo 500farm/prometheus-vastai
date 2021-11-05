@@ -21,7 +21,7 @@ _NOTE: This is a work in progress. Output format is subject to change._
 ### Usage
 
 ```
-docker run -d --restart always -p 8622:8622 sergeycheperis/ethereum-exporter --key=VASTKEY ARGS...
+docker run -d --restart always -p 8622:8622 sergeycheperis/vastai-exporter --key=VASTKEY ARGS...
 ```
 Replace _VASTKEY_ with your Vast.ai API key. To test, open http://localhost:8622. If does not work, check container output with `docker logs`.
 
