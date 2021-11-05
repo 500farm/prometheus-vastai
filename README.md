@@ -197,6 +197,7 @@ vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="yes",v
 
 ### Live examples of global stats
 
+(updated every minute)
 - [Global stats over all types of GPUs](https://500.farm/vastai-exporter/metrics/global)
 - [List of offers available on Vast.ai](https://500.farm/vastai-exporter/offers)
 - [List of machines available on Vast.ai](https://500.farm/vastai-exporter/machines)
