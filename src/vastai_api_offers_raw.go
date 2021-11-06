@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/prometheus/common/log"
 )
@@ -16,10 +17,6 @@ type VastAiRawOffer map[string]interface{}
 type VastAiRawOffers []VastAiRawOffer
 
 func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
-	var j struct {
-		Url    string          `json:"url"`
-		Offers VastAiRawOffers `json:"offers"`
-	}
 	url := strings.TrimRight(masterUrl, "/") + "/offers"
 	resp, err := http.Get(url)
 	if err != nil {
@@ -33,6 +30,7 @@ func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 	if err != nil {
 		return err
 	}
+	var j RawOffersResponse
 	err = json.Unmarshal(body, &j)
 	if err != nil {
 		return err
@@ -40,7 +38,8 @@ func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 	if j.Url != "/offers" {
 		return fmt.Errorf("Not a Vast.ai exporter URL: %s", masterUrl)
 	}
-	result.offers = &j.Offers
+	result.ts = j.Timestamp
+	result.offers = j.Offers
 	return nil
 }
 
@@ -48,6 +47,7 @@ func getRawOffersFromApi(result *VastAiApiResults) error {
 	var verified, unverified struct {
 		Offers VastAiRawOffers `json:"offers"`
 	}
+	result.ts = time.Now()
 	if err := vastApiCall(&verified, "bundles", url.Values{
 		"q": {`{"external":{"eq":"false"},"verified":{"eq":"true"},"type":"on-demand","disable_bundling":true}`},
 	}); err != nil {

@@ -55,9 +55,7 @@ type VastAiInstance struct {
 }
 
 func getVastAiInfo(masterUrl string) VastAiApiResults {
-	result := VastAiApiResults{
-		ts: time.Now(),
-	}
+	result := VastAiApiResults{}
 
 	var err error
 	if masterUrl != "" {
