@@ -24,9 +24,13 @@ _NOTE: This is a work in progress. Output format is subject to change._
 docker run -d --restart always -p 8622:8622 sergeycheperis/ethereum-exporter \
     --key=VASTKEY \
     --state-dir=/var/run/vastai-exporter \
+    --master-url=https://500.farm/vastai-exporter \
     ARGS...
 ```
 Replace _VASTKEY_ with your Vast.ai API key. To test, open http://localhost:8622. If does not work, check container output with `docker logs`.
+
+It is recommended to use `--master-url` as shown to use cached offer data instead of querying Vast.ai directly. Querying offers is a heavy
+API call, and running multiple exporters doing it every minute may significantly increase load on Vast.ai and the rate of 502/503 errors.
 
 Errors/warnings are printed to stderr and can be viewed with `docker logs`.
 
@@ -41,6 +45,9 @@ Errors/warnings are printed to stderr and can be viewed with `docker logs`.
 
 --state-dir=
     Directory to store state between runs (default $HOME). 
+
+--master-url=
+    Query global data from the master exporter and not from Vast.ai directly.
 ```
 
 ### Example output
