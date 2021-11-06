@@ -21,7 +21,7 @@ _NOTE: This is a work in progress. Output format is subject to change._
 ### Usage
 
 ```
-docker run -d --restart always -p 8622:8622 sergeycheperis/ethereum-exporter \
+docker run -d --restart always -p 8622:8622 500farm/vastai-exporter \
     --key=VASTKEY \
     --state-dir=/var/run/vastai-exporter \
     --master-url=https://500.farm/vastai-exporter
