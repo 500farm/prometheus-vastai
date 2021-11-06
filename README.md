@@ -15,7 +15,10 @@ _NOTE: This is a work in progress. Output format is subject to change._
 ### Usage
 
 ```
-docker run -d --restart always -p 8622:8622 sergeycheperis/ethereum-exporter --key=VASTKEY ARGS...
+docker run -d --restart always -p 8622:8622 sergeycheperis/ethereum-exporter \
+    --key=VASTKEY \
+    --state-dir=/var/run/vastai-exporter \
+    ARGS...
 ```
 Replace _VASTKEY_ with your Vast.ai API key. To test, open http://localhost:8622. If does not work, check container output with `docker logs`.
 
@@ -28,6 +31,9 @@ Replace _VASTKEY_ with your Vast.ai API key. To test, open http://localhost:8622
 
 --update-interval=
     How often to query Vast.ai for updates (default 1m).
+
+--state-dir=
+    Directory to store state between runs (default $HOME). 
 ```
 
 ### Example output
