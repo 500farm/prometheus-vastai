@@ -18,8 +18,8 @@ type OfferCache struct {
 var offerCache OfferCache
 
 func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
-	if apiRes.offersVerified != nil && apiRes.offersUnverified != nil {
-		cache.rawOffers = mergeRawOffers(*apiRes.offersVerified, *apiRes.offersUnverified).validate()
+	if apiRes.offers != nil {
+		cache.rawOffers = (*apiRes.offers).validate()
 		cache.wholeMachineRawOffers = cache.rawOffers.filterWholeMachines(cache.wholeMachineRawOffers)
 		cache.machines = cache.wholeMachineRawOffers.decode()
 		cache.ts = apiRes.ts
@@ -27,7 +27,7 @@ func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 }
 
 func (cache *OfferCache) InitialUpdateFrom(apiRes VastAiApiResults) error {
-	if apiRes.offersVerified == nil || apiRes.offersUnverified == nil {
+	if apiRes.offers == nil {
 		return errors.New("Could not read offer data from Vast.ai")
 	}
 	cache.UpdateFrom(apiRes)

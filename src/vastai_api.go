@@ -15,12 +15,11 @@ import (
 )
 
 type VastAiApiResults struct {
-	offersVerified   *VastAiRawOffers
-	offersUnverified *VastAiRawOffers
-	myMachines       *[]VastAiMachine
-	myInstances      *[]VastAiInstance
-	payouts          *PayoutInfo
-	ts               time.Time
+	offers      *VastAiRawOffers
+	myMachines  *[]VastAiMachine
+	myInstances *[]VastAiInstance
+	payouts     *PayoutInfo
+	ts          time.Time
 }
 
 type VastAiMachine struct {
@@ -55,12 +54,20 @@ type VastAiInstance struct {
 	GpuName      string  `json:"gpu_name"`
 }
 
-func getVastAiInfoFromApi() VastAiApiResults {
+func getVastAiInfo(masterUrl string) VastAiApiResults {
 	result := VastAiApiResults{
 		ts: time.Now(),
 	}
 
-	if err := getRawOffersFromApi(&result); err != nil {
+	var err error
+	if masterUrl != "" {
+		// query offer from master exporter
+		err = getRawOffersFromMaster(masterUrl, &result)
+	} else {
+		// query offers from Vast.ai API
+		err = getRawOffersFromApi(&result)
+	}
+	if err != nil {
 		log.Errorln(err)
 	}
 

@@ -29,6 +29,10 @@ var (
 		"state-dir",
 		"Path to store state files (default $HOME)",
 	).String()
+	masterUrl = kingpin.Flag(
+		"master-url",
+		"Query global data from the master exporter and not from Vast.ai directly.",
+	).String()
 )
 
 func metricsHandler(w http.ResponseWriter, r *http.Request, collector prometheus.Collector) {
@@ -55,7 +59,7 @@ func main() {
 	log.Infoln("Reading initial Vast.ai info")
 
 	// read info from vast.ai: offers
-	info := getVastAiInfoFromApi()
+	info := getVastAiInfo(*masterUrl)
 	err := offerCache.InitialUpdateFrom(info)
 	if err != nil {
 		// initial update must succeed, otherwise exit
@@ -115,7 +119,7 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(*updateInterval)
-			info := getVastAiInfoFromApi()
+			info := getVastAiInfo(*masterUrl)
 			offerCache.UpdateFrom(info)
 			vastAiGlobalCollector.UpdateFrom(&offerCache)
 			if useAccount {

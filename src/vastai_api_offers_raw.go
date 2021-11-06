@@ -1,15 +1,48 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 
 	"github.com/prometheus/common/log"
 )
 
 type VastAiRawOffer map[string]interface{}
 type VastAiRawOffers []VastAiRawOffer
+
+func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
+	var j struct {
+		Url    string          `json:"url"`
+		Offers VastAiRawOffers `json:"offers"`
+	}
+	url := strings.TrimRight(masterUrl, "/") + "/offers"
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf(`URL %s returned "%s"`, url, resp.Status)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(body, &j)
+	if err != nil {
+		return err
+	}
+	if j.Url != "/offers" {
+		return fmt.Errorf("Not a Vast.ai exporter URL: %s", masterUrl)
+	}
+	result.offers = &j.Offers
+	return nil
+}
 
 func getRawOffersFromApi(result *VastAiApiResults) error {
 	var verified, unverified struct {
@@ -25,8 +58,8 @@ func getRawOffersFromApi(result *VastAiApiResults) error {
 	}); err != nil {
 		return err
 	}
-	result.offersVerified = &verified.Offers
-	result.offersUnverified = &unverified.Offers
+	offers := mergeRawOffers(verified.Offers, unverified.Offers)
+	result.offers = &offers
 	return nil
 }
 
