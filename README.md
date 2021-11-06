@@ -8,7 +8,13 @@ Prometheus exporter reporting data from your Vast.ai account:
 - Stats of your own instances: on-demand and default.
 - Paid and pending balance of your account.
 - Your on-demand and bid prices. 
-- On-demand price range of machines with the same GPU as yours.
+- Stats of other hosts' offers with the same GPU as yours.
+
+In addition to per-account Prometheus metrics (url: `/metrics`), the exporter provides the following data:
+
+- Global stats over all types of GPUs in Prometheus format (url: `/metrics/global`).
+- List of offers available on Vast.ai in JSON (url: `/offers`).
+- List of machines available on Vast.ai in JSON (url: `/machines`).
 
 _NOTE: This is a work in progress. Output format is subject to change._
 
@@ -22,6 +28,7 @@ docker run -d --restart always -p 8622:8622 sergeycheperis/ethereum-exporter \
 ```
 Replace _VASTKEY_ with your Vast.ai API key. To test, open http://localhost:8622. If does not work, check container output with `docker logs`.
 
+Errors/warnings are printed to stderr and can be viewed with `docker logs`.
 
 ### Optional args
 
@@ -193,3 +200,11 @@ vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="yes",v
 vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="yes",verified="no"} 0.5
 vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="yes",verified="yes"} 0.65
 ```
+
+### Live examples of global stats
+
+_Real data from Vast.ai, updated every minute._
+
+- [Global stats over all types of GPUs](https://500.farm/vastai-exporter/metrics/global)
+- [List of offers available on Vast.ai in JSON](https://500.farm/vastai-exporter/offers)
+- [List of machines available on Vast.ai in JSON](https://500.farm/vastai-exporter/machines)
