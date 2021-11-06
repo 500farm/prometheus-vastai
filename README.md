@@ -8,7 +8,7 @@ Prometheus exporter reporting data from your Vast.ai account:
 - Stats of your own instances: on-demand and default.
 - Paid and pending balance of your account.
 - Your on-demand and bid prices. 
-- Stats on other hosts' offers with the same GPU as yours.
+- Stats of other hosts' offers with the same GPU as yours.
 
 In addition to per-account Prometheus metrics (url: `/metrics`), the exporter provides the following data:
 
@@ -197,7 +197,7 @@ vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="yes",v
 
 ### Live examples of global stats
 
-(updated every minute)
+(real data from Vast.ai, updated every minute)
 - [Global stats over all types of GPUs](https://500.farm/vastai-exporter/metrics/global)
 - [List of offers available on Vast.ai in JSON](https://500.farm/vastai-exporter/offers)
 - [List of machines available on Vast.ai in JSON](https://500.farm/vastai-exporter/machines)
