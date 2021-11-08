@@ -18,7 +18,8 @@ type VastAiRawOffers []VastAiRawOffer
 
 func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 	url := strings.TrimRight(masterUrl, "/") + "/offers"
-	resp, err := http.Get(url)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(url)
 	if err != nil {
 		return err
 	}
@@ -50,12 +51,12 @@ func getRawOffersFromApi(result *VastAiApiResults) error {
 	result.ts = time.Now()
 	if err := vastApiCall(&verified, "bundles", url.Values{
 		"q": {`{"external":{"eq":"false"},"verified":{"eq":"true"},"type":"on-demand","disable_bundling":true}`},
-	}); err != nil {
+	}, bundleTimeout); err != nil {
 		return err
 	}
 	if err := vastApiCall(&unverified, "bundles", url.Values{
 		"q": {`{"external":{"eq":"false"},"verified":{"eq":"false"},"type":"on-demand","disable_bundling":true}`},
-	}); err != nil {
+	}, bundleTimeout); err != nil {
 		return err
 	}
 	offers := mergeRawOffers(verified.Offers, unverified.Offers)

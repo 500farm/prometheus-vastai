@@ -28,7 +28,7 @@ type PayoutInfo struct {
 
 func getPayouts() (*PayoutInfo, error) {
 	var data VastAiInvoices
-	err := vastApiCall(&data, "users/current/invoices", nil)
+	err := vastApiCall(&data, "users/current/invoices", nil, defaultTimeout)
 	if err != nil {
 		return nil, err
 	}

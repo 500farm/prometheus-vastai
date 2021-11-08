@@ -54,6 +54,9 @@ type VastAiInstance struct {
 	GpuName      string  `json:"gpu_name"`
 }
 
+const defaultTimeout = 10 * time.Second
+const bundleTimeout = 30 * time.Second
+
 func getVastAiInfo(masterUrl string) VastAiApiResults {
 	result := VastAiApiResults{}
 
@@ -76,7 +79,7 @@ func getVastAiInfo(masterUrl string) VastAiApiResults {
 	var response1 struct {
 		Machines []VastAiMachine `json:"machines"`
 	}
-	if err := vastApiCall(&response1, "machines", nil); err != nil {
+	if err := vastApiCall(&response1, "machines", nil, defaultTimeout); err != nil {
 		log.Errorln(err)
 	} else {
 		result.myMachines = &response1.Machines
@@ -85,7 +88,7 @@ func getVastAiInfo(masterUrl string) VastAiApiResults {
 	var response2 struct {
 		Instances []VastAiInstance `json:"instances"`
 	}
-	if err := vastApiCall(&response2, "instances", nil); err != nil {
+	if err := vastApiCall(&response2, "instances", nil, defaultTimeout); err != nil {
 		log.Errorln(err)
 	} else {
 		result.myInstances = &response2.Instances
@@ -105,8 +108,8 @@ func (instance *VastAiInstance) isDefaultJob() bool {
 	return instance.BundleId == nil
 }
 
-func vastApiCall(result interface{}, endpoint string, args url.Values) error {
-	body, err := vastApiCallRaw(endpoint, args)
+func vastApiCall(result interface{}, endpoint string, args url.Values, timeout time.Duration) error {
+	body, err := vastApiCallRaw(endpoint, args, timeout)
 	if err != nil {
 		return err
 	}
@@ -118,14 +121,15 @@ func vastApiCall(result interface{}, endpoint string, args url.Values) error {
 	return nil
 }
 
-func vastApiCallRaw(endpoint string, args url.Values) ([]byte, error) {
+func vastApiCallRaw(endpoint string, args url.Values, timeout time.Duration) ([]byte, error) {
 	if args == nil {
 		args = make(url.Values)
 	}
 	if *apiKey != "" {
 		args.Set("api_key", *apiKey)
 	}
-	resp, err := http.Get("https://vast.ai/api/v0/" + endpoint + "/?" + args.Encode())
+	client := &http.Client{Timeout: timeout}
+	resp, err := client.Get("https://vast.ai/api/v0/" + endpoint + "/?" + args.Encode())
 	if err != nil {
 		return nil, err
 	}
