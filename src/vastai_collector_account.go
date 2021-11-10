@@ -242,6 +242,11 @@ func (e *VastAiAccountCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (e *VastAiAccountCollector) UpdateFrom(info VastAiApiResults, offerCache *OfferCache) {
+	e.UpdateMachinesAndInstances(info, offerCache)
+	e.UpdatePayouts(info)
+}
+
+func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResults, offerCache *OfferCache) {
 	if info.myMachines == nil {
 		return
 	}
@@ -295,72 +300,70 @@ func (e *VastAiAccountCollector) UpdateFrom(info VastAiApiResults, offerCache *O
 
 	// process machines
 	// TODO handle disappeared machines
-	{
-		for _, machine := range *info.myMachines {
-			labels := prometheus.Labels{
-				"machine_id": strconv.Itoa(machine.Id),
-			}
+	for _, machine := range *info.myMachines {
+		labels := prometheus.Labels{
+			"machine_id": strconv.Itoa(machine.Id),
+		}
 
-			e.machine_info.
-				MustCurryWith(labels).
-				With(prometheus.Labels{"hostname": machine.Hostname, "gpu_name": machine.GpuName}).
-				Set(1.0)
-			e.machine_is_verified.With(labels).Set(boolToFloat(machine.Verification == "verified"))
-			e.machine_is_listed.With(labels).Set(boolToFloat(machine.Listed))
-			e.machine_is_online.With(labels).Set(boolToFloat(machine.Timeout == 0))
-			e.machine_reliability.With(labels).Set(machine.Reliability)
+		e.machine_info.
+			MustCurryWith(labels).
+			With(prometheus.Labels{"hostname": machine.Hostname, "gpu_name": machine.GpuName}).
+			Set(1.0)
+		e.machine_is_verified.With(labels).Set(boolToFloat(machine.Verification == "verified"))
+		e.machine_is_listed.With(labels).Set(boolToFloat(machine.Listed))
+		e.machine_is_online.With(labels).Set(boolToFloat(machine.Timeout == 0))
+		e.machine_reliability.With(labels).Set(machine.Reliability)
 
-			// inet up/down
-			t := e.machine_inet_bps.MustCurryWith(labels)
-			t.With(prometheus.Labels{"direction": "up"}).Set(machine.InetUp * 1e6)
-			t.With(prometheus.Labels{"direction": "down"}).Set(machine.InetDown * 1e6)
+		// inet up/down
+		t := e.machine_inet_bps.MustCurryWith(labels)
+		t.With(prometheus.Labels{"direction": "up"}).Set(machine.InetUp * 1e6)
+		t.With(prometheus.Labels{"direction": "down"}).Set(machine.InetDown * 1e6)
 
-			//
-			e.machine_ondemand_price_per_gpu_dollars.With(labels).Set(machine.ListedGpuCost)
-			e.machine_gpu_count.With(labels).Set(float64(machine.NumGpus))
+		//
+		e.machine_ondemand_price_per_gpu_dollars.With(labels).Set(machine.ListedGpuCost)
+		e.machine_gpu_count.With(labels).Set(float64(machine.NumGpus))
 
-			// count different categories of rentals
-			countOnDemandRunning := machine.CurrentRentalsRunningOnDemand
-			countOnDemandStopped := machine.CurrentRentalsOnDemand - countOnDemandRunning
-			countBidRunning := machine.CurrentRentalsRunning - countOnDemandRunning
-			countBidStopped := machine.CurrentRentalsResident - machine.CurrentRentalsOnDemand - countBidRunning
+		// count different categories of rentals
+		countOnDemandRunning := machine.CurrentRentalsRunningOnDemand
+		countOnDemandStopped := machine.CurrentRentalsOnDemand - countOnDemandRunning
+		countBidRunning := machine.CurrentRentalsRunning - countOnDemandRunning
+		countBidStopped := machine.CurrentRentalsResident - machine.CurrentRentalsOnDemand - countBidRunning
 
-			t = e.machine_rentals_count.MustCurryWith(labels)
-			t.With(prometheus.Labels{"rental_type": "ondemand", "rental_status": "running"}).Set(float64(countOnDemandRunning))
-			t.With(prometheus.Labels{"rental_type": "ondemand", "rental_status": "stopped"}).Set(float64(countOnDemandStopped))
-			t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "running"}).Set(float64(countBidRunning))
-			t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "stopped"}).Set(float64(countBidStopped))
+		t = e.machine_rentals_count.MustCurryWith(labels)
+		t.With(prometheus.Labels{"rental_type": "ondemand", "rental_status": "running"}).Set(float64(countOnDemandRunning))
+		t.With(prometheus.Labels{"rental_type": "ondemand", "rental_status": "stopped"}).Set(float64(countOnDemandStopped))
+		t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "running"}).Set(float64(countBidRunning))
+		t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "stopped"}).Set(float64(countBidStopped))
 
-			// count my/default jobs
-			if info.myInstances != nil {
-				defJobsRunning := 0
-				defJobsStopped := 0
-				myJobsRunning := 0
-				myJobsStopped := 0
+		// count my/default jobs
+		if info.myInstances != nil {
+			defJobsRunning := 0
+			defJobsStopped := 0
+			myJobsRunning := 0
+			myJobsStopped := 0
 
-				for _, instance := range *info.myInstances {
-					if instance.MachineId == machine.Id {
-						if instance.isDefaultJob() {
-							if instance.ActualStatus == "running" {
-								defJobsRunning++
-							} else {
-								defJobsStopped++
-							}
+			for _, instance := range *info.myInstances {
+				if instance.MachineId == machine.Id {
+					if instance.isDefaultJob() {
+						if instance.ActualStatus == "running" {
+							defJobsRunning++
 						} else {
-							if instance.ActualStatus == "running" {
-								myJobsRunning++
-							} else {
-								myJobsStopped++
-							}
+							defJobsStopped++
+						}
+					} else {
+						if instance.ActualStatus == "running" {
+							myJobsRunning++
+						} else {
+							myJobsStopped++
 						}
 					}
 				}
-
-				t.With(prometheus.Labels{"rental_type": "default", "rental_status": "running"}).Set(float64(defJobsRunning))
-				t.With(prometheus.Labels{"rental_type": "default", "rental_status": "stopped"}).Set(float64(defJobsStopped))
-				t.With(prometheus.Labels{"rental_type": "my", "rental_status": "running"}).Set(float64(myJobsRunning))
-				t.With(prometheus.Labels{"rental_type": "my", "rental_status": "stopped"}).Set(float64(myJobsStopped))
 			}
+
+			t.With(prometheus.Labels{"rental_type": "default", "rental_status": "running"}).Set(float64(defJobsRunning))
+			t.With(prometheus.Labels{"rental_type": "default", "rental_status": "stopped"}).Set(float64(defJobsStopped))
+			t.With(prometheus.Labels{"rental_type": "my", "rental_status": "running"}).Set(float64(myJobsRunning))
+			t.With(prometheus.Labels{"rental_type": "my", "rental_status": "stopped"}).Set(float64(myJobsStopped))
 		}
 	}
 
@@ -417,22 +420,25 @@ func (e *VastAiAccountCollector) UpdateFrom(info VastAiApiResults, offerCache *O
 			}
 		}
 	}
+}
 
-	// process payouts
-	if info.payouts != nil {
-		// workaround: make sure pendingPayout grows strictly monotonically unless a payout happened
-		if e.lastPayouts == nil ||
-			info.payouts.PendingPayout > e.lastPayouts.PendingPayout ||
-			info.payouts.PaidOut > e.lastPayouts.PaidOut {
+func (e *VastAiAccountCollector) UpdatePayouts(info VastAiApiResults) {
+	if info.payouts == nil {
+		return
+	}
 
-			e.pending_payout_dollars.Set(info.payouts.PendingPayout)
-			e.paid_out_dollars.Set(info.payouts.PaidOut)
-			e.last_payout_time.Set(info.payouts.LastPayoutTime)
+	// workaround: make sure pendingPayout grows strictly monotonically unless a payout happened
+	if e.lastPayouts == nil ||
+		info.payouts.PendingPayout > e.lastPayouts.PendingPayout ||
+		info.payouts.PaidOut > e.lastPayouts.PaidOut {
 
-			// store lastPayouts and write them to the status file
-			e.lastPayouts = info.payouts
-			storeLastPayouts(info.payouts)
-		}
+		e.pending_payout_dollars.Set(info.payouts.PendingPayout)
+		e.paid_out_dollars.Set(info.payouts.PaidOut)
+		e.last_payout_time.Set(info.payouts.LastPayoutTime)
+
+		// store lastPayouts and write them to the status file
+		e.lastPayouts = info.payouts
+		storeLastPayouts(info.payouts)
 	}
 }
 
