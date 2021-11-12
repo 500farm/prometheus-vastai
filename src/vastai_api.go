@@ -56,6 +56,7 @@ type VastAiInstance struct {
 
 const defaultTimeout = 10 * time.Second
 const bundleTimeout = 30 * time.Second
+const queryInterval = 5 * time.Second
 
 func getVastAiInfo(masterUrl string) VastAiApiResults {
 	result := VastAiApiResults{}
@@ -67,6 +68,7 @@ func getVastAiInfo(masterUrl string) VastAiApiResults {
 	} else {
 		// query offers from Vast.ai API
 		err = getRawOffersFromApi(&result)
+		time.Sleep(queryInterval)
 	}
 	if err != nil {
 		log.Errorln(err)
@@ -84,6 +86,7 @@ func getVastAiInfo(masterUrl string) VastAiApiResults {
 	} else {
 		result.myMachines = &response1.Machines
 	}
+	time.Sleep(queryInterval)
 
 	var response2 struct {
 		Instances []VastAiInstance `json:"instances"`
@@ -93,6 +96,7 @@ func getVastAiInfo(masterUrl string) VastAiApiResults {
 	} else {
 		result.myInstances = &response2.Instances
 	}
+	time.Sleep(queryInterval)
 
 	payouts, err := getPayouts()
 	if err != nil {
