@@ -54,7 +54,7 @@ type VastAiInstance struct {
 	GpuName      string  `json:"gpu_name"`
 }
 
-const defaultTimeout = 10 * time.Second
+const defaultTimeout = 30 * time.Second
 const bundleTimeout = 30 * time.Second
 const queryInterval = 5 * time.Second
 
