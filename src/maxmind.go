@@ -102,14 +102,16 @@ func queryMaxMind(ip string) (*GeoLocation, error) {
 	code := resp.StatusCode
 	if code == 404 {
 		// IP not found in database, it's not an error, return empty record
-		return &GeoLocation{}, nil
+		return &GeoLocation{
+			expires: time.Now().Add(GeoLocationTTL),
+		}, nil
 	}
 	if code != 200 {
 		log.Errorln(string(body))
 		if code == 401 || code == 402 {
 			// 401 Unauthorized or 402 Payment Required
 			maxMindFailed = true
-			log.Errorln("Disabling MaxMind until restart")
+			log.Errorln("Disabling MaxMind until restart because of following:")
 		}
 		return nil, fmt.Errorf("%s returned: %s", url, resp.Status)
 	}
