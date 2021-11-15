@@ -73,22 +73,6 @@ func (cache *OfferCache) rawOffersJson(wholeMachines bool) []byte {
 	return result
 }
 
-type MapResponse struct {
-	Offers *VastAiRawOffers `json:"offers"`
-}
-
-func (cache *OfferCache) mapJson() []byte {
-	offers := cache.wholeMachineRawOffers.filterForMap()
-	result, err := json.MarshalIndent(MapResponse{
-		Offers: &offers,
-	}, "", "    ")
-	if err != nil {
-		log.Errorln(err)
-		return nil
-	}
-	return result
-}
-
 type GpuStatsModel struct {
 	Name  string      `json:"name"`
 	Stats OfferStats3 `json:"stats"`

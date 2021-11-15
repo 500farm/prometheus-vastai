@@ -24,17 +24,6 @@ type GeoLocation struct {
 	Domain       string  `json:"domain,omitempty"`
 }
 
-type GeoLocationForMap struct {
-	Country      string  `json:"country"`
-	Location     string  `json:"location"`
-	Lat          float64 `json:"lat"`
-	Long         float64 `json:"long"`
-	Accuracy     float64 `json:"accuracy"` // in kilometers
-	ISP          string  `json:"isp"`
-	Organization string  `json:"organization"`
-	Domain       string  `json:"domain"`
-}
-
 type GeoCacheEntry struct {
 	Expires  time.Time
 	Location *GeoLocation
@@ -228,19 +217,6 @@ func (entries GeoCacheEntries) removeExpired() GeoCacheEntries {
 		}
 	}
 	return newEntries
-}
-
-func (loc *GeoLocation) forMap() GeoLocationForMap {
-	return GeoLocationForMap{
-		Country:      loc.Country,
-		Location:     loc.Location,
-		Lat:          loc.Lat,
-		Long:         loc.Long,
-		Accuracy:     loc.Accuracy,
-		ISP:          loc.ISP,
-		Organization: loc.Organization,
-		Domain:       loc.Domain,
-	}
 }
 
 func makeExpireTime() time.Time {
