@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"math"
 
 	"github.com/montanaflynn/stats"
@@ -13,6 +14,9 @@ type VastAiOffer struct {
 	NumGpusRented int
 	PricePerGpu   int // in cents
 	Verified      bool
+	Vram          float64
+	DlperfPerGpu  float64
+	TflopsPerGpu  float64
 }
 type VastAiOffers []VastAiOffer
 
@@ -23,25 +27,43 @@ type OfferStats struct {
 	Median, PercentileLow, PercentileHigh float64
 }
 
+type GpuInfo struct {
+	Vram   float64 `json:"vram"`
+	Dlperf float64 `json:"dlperf"`
+	Tflops float64 `json:"tflops"`
+}
+
 type OfferStats2 struct {
-	Verified, Unverified, All OfferStats
+	Verified   OfferStats `json:"verified"`
+	Unverified OfferStats `json:"unverified"`
+	All        OfferStats `json:"all"`
 }
 
 type OfferStats3 struct {
-	Rented, Available, All OfferStats2
+	Rented    OfferStats2 `json:"rented"`
+	Available OfferStats2 `json:"available"`
+	All       OfferStats2 `json:"all"`
 }
 
 func (offers VastAiRawOffers) decode() VastAiOffers {
 	result := make(VastAiOffers, 0, len(offers))
 	for _, offer := range offers {
-		result = append(result, VastAiOffer{
+		numGpus := offer.numGpus()
+		decoded := VastAiOffer{
 			MachineId:     offer.machineId(),
 			GpuName:       offer.gpuName(),
-			NumGpus:       offer.numGpus(),
+			NumGpus:       numGpus,
 			NumGpusRented: offer.numGpusRented(),
 			PricePerGpu:   offer.pricePerGpu(),
 			Verified:      offer.verified(),
-		})
+		}
+		vram, _ := offer["gpu_ram"].(float64)
+		dlperf, _ := offer["dlperf"].(float64)
+		tflops, _ := offer["total_flops"].(float64)
+		decoded.Vram = math.Ceil(vram / 1024)
+		decoded.DlperfPerGpu = dlperf / float64(numGpus)
+		decoded.TflopsPerGpu = tflops / float64(numGpus)
+		result = append(result, decoded)
 	}
 	return result
 }
@@ -126,6 +148,37 @@ func (offers VastAiOffers) stats() OfferStats {
 	return result
 }
 
+func (offers VastAiOffers) gpuInfo() *GpuInfo {
+	if len(offers) == 0 {
+		return nil
+	}
+
+	vramVals := []float64{}
+	dlperfVals := []float64{}
+	tflopsVals := []float64{}
+	for _, offer := range offers {
+		vramVals = append(vramVals, offer.Vram)
+		dlperfVals = append(dlperfVals, offer.DlperfPerGpu)
+		tflopsVals = append(tflopsVals, offer.TflopsPerGpu)
+	}
+
+	vram, _ := stats.Max(vramVals)
+	dlperf, err := stats.Percentile(dlperfVals, 90)
+	if err != nil {
+		dlperf, _ = stats.Max(dlperfVals)
+	}
+	tflops, err := stats.Percentile(tflopsVals, 90)
+	if err != nil {
+		tflops, _ = stats.Max(tflopsVals)
+	}
+
+	return &GpuInfo{
+		Vram:   vram,
+		Dlperf: dlperf,
+		Tflops: tflops,
+	}
+}
+
 func (offers VastAiOffers) stats2() OfferStats2 {
 	return OfferStats2{
 		Verified:   offers.filterVerified().stats(),
@@ -140,4 +193,32 @@ func (offers VastAiOffers) stats3() OfferStats3 {
 		Available: offers.filterAvailable().stats2(),
 		All:       offers.stats2(),
 	}
+}
+
+// Custom Marshaler to avoid "unsupported value: NaN"
+func (t OfferStats) MarshalJSON() ([]byte, error) {
+	type OfferStatsJson struct {
+		Count          int      `json:"count"`
+		Median         *float64 `json:"price_median,omitempty"`
+		PercentileLow  *float64 `json:"price_10th_percentile,omitempty"`
+		PercentileHigh *float64 `json:"price_90th_percentile,omitempty"`
+	}
+	u := OfferStatsJson{
+		Count: t.Count,
+	}
+	if !math.IsNaN(t.Median) {
+		v := t.Median / 100
+		u.Median = &v
+	}
+	if !math.IsNaN(t.PercentileLow) && !math.IsNaN(t.PercentileHigh) {
+		v1 := t.PercentileLow / 100
+		u.PercentileLow = &v1
+		v2 := t.PercentileHigh / 100
+		u.PercentileHigh = &v2
+	}
+	j, err := json.Marshal(u)
+	if err != nil {
+		return nil, err
+	}
+	return []byte("[" + string(j) + "]"), nil
 }

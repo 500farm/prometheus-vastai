@@ -104,6 +104,11 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(offerCache.rawOffersJson(true))
 	})
+	http.HandleFunc("/gpu-stats", func(w http.ResponseWriter, r *http.Request) {
+		// json gpu stats
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(offerCache.gpuStatsJson())
+	})
 	http.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {
 		// global stats
 		metricsHandler(w, r, vastAiGlobalCollector)
@@ -124,7 +129,10 @@ func main() {
 		} else {
 			w.Write([]byte(`<a href="/metrics">Global stats</a><br>`))
 		}
-		w.Write([]byte(`<a href="/offers">Global JSON list of offers</a><br><a href="/machines">Global JSON list of machines</a><br></body></html>`))
+		w.Write([]byte(`<a href="/offers">Global JSON list of offers</a><br>`))
+		w.Write([]byte(`<a href="/machines">Global JSON list of machines</a><br>`))
+		w.Write([]byte(`<a href="/gpu-stats">Global JSON per-model stats on GPUs</a><br>`))
+		w.Write([]byte(`</body></html>`))
 	})
 
 	go func() {

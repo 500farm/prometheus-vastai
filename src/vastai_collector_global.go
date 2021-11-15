@@ -11,11 +11,15 @@ type VastAiGlobalCollector struct {
 	ondemand_price_10th_percentile_dollars *prometheus.GaugeVec
 	ondemand_price_90th_percentile_dollars *prometheus.GaugeVec
 	gpu_count                              *prometheus.GaugeVec
+	gpu_vram_gigabytes                     *prometheus.GaugeVec
+	gpu_teraflops                          *prometheus.GaugeVec
+	gpu_dlperf_score                       *prometheus.GaugeVec
 }
 
 func newVastAiGlobalCollector() *VastAiGlobalCollector {
 	namespace := "vastai"
 	labelNames := []string{"gpu_name", "verified", "rented"}
+	labelNames2 := []string{"gpu_name"}
 
 	return &VastAiGlobalCollector{
 		ondemand_price_median_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -38,6 +42,22 @@ func newVastAiGlobalCollector() *VastAiGlobalCollector {
 			Name:      "gpu_count",
 			Help:      "Number of GPUs offered on site",
 		}, labelNames),
+
+		gpu_vram_gigabytes: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "gpu_vram_gigabytes",
+			Help:      "VRAM amount of the GPU model",
+		}, labelNames2),
+		gpu_teraflops: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "gpu_teraflops",
+			Help:      "TFLOPS performance of the GPU model",
+		}, labelNames2),
+		gpu_dlperf_score: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "gpu_dlperf_score",
+			Help:      "DLPerf score of the GPU model",
+		}, labelNames2),
 	}
 }
 
@@ -46,6 +66,9 @@ func (e *VastAiGlobalCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.ondemand_price_10th_percentile_dollars.Describe(ch)
 	e.ondemand_price_90th_percentile_dollars.Describe(ch)
 	e.gpu_count.Describe(ch)
+	e.gpu_vram_gigabytes.Describe(ch)
+	e.gpu_teraflops.Describe(ch)
+	e.gpu_dlperf_score.Describe(ch)
 }
 
 func (e *VastAiGlobalCollector) Collect(ch chan<- prometheus.Metric) {
@@ -53,6 +76,9 @@ func (e *VastAiGlobalCollector) Collect(ch chan<- prometheus.Metric) {
 	e.ondemand_price_10th_percentile_dollars.Collect(ch)
 	e.ondemand_price_90th_percentile_dollars.Collect(ch)
 	e.gpu_count.Collect(ch)
+	e.gpu_vram_gigabytes.Collect(ch)
+	e.gpu_teraflops.Collect(ch)
+	e.gpu_dlperf_score.Collect(ch)
 }
 
 func (e *VastAiGlobalCollector) UpdateFrom(offerCache *OfferCache) {
@@ -87,5 +113,13 @@ func (e *VastAiGlobalCollector) UpdateFrom(offerCache *OfferCache) {
 		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "yes", "rented": "any"}, stats.All.Verified, false)
 		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "no", "rented": "any"}, stats.All.Unverified, false)
 		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "any", "rented": "any"}, stats.All.All, false)
+
+		info := offers.gpuInfo()
+		if info != nil {
+			labels := prometheus.Labels{"gpu_name": gpuName}
+			e.gpu_vram_gigabytes.With(labels).Set(info.Vram)
+			e.gpu_dlperf_score.With(labels).Set(info.Dlperf)
+			e.gpu_teraflops.With(labels).Set(info.Tflops)
+		}
 	}
 }
