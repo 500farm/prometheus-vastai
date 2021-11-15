@@ -13,8 +13,11 @@ Prometheus exporter reporting data from your Vast.ai account:
 In addition to per-account Prometheus metrics (url: `/metrics`), the exporter provides the following data:
 
 - Global stats over all types of GPUs in Prometheus format (url: `/metrics/global`).
+- Global stats over all types of GPUs in JSON (url: `/gpu-stats`).
 - List of offers available on Vast.ai in JSON (url: `/offers`).
 - List of machines available on Vast.ai in JSON (url: `/machines`).
+- List of Vast.ai hosts in JSON (url: `/hosts`).
+- Data used to build map of hosts with Grafana (url: `/host-map-data`).
 
 _NOTE: This is a work in progress. Output format is subject to change._
 
@@ -47,6 +50,9 @@ Errors/warnings are printed to stderr and can be viewed with `docker logs`.
 
 --master-url=
     Query global data from the master exporter and not from Vast.ai directly.
+
+--maxmind-key=USERID:KEY
+    Use MaxMind GeoIP web services. Specify your Account ID and License Key separated with ":".
 ```
 
 ### Example output
@@ -211,6 +217,8 @@ vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="yes",v
 
 _Real data from Vast.ai, updated every minute._
 
-- [Global stats over all types of GPUs](https://500.farm/vastai-exporter/metrics/global)
-- [List of offers available on Vast.ai in JSON](https://500.farm/vastai-exporter/offers)
-- [List of machines available on Vast.ai in JSON](https://500.farm/vastai-exporter/machines)
+- [Global stats over all types of GPUs (Prometheus)](https://500.farm/vastai-exporter/metrics/global)
+- [Global stats over all types of GPUs (JSON)](https://500.farm/vastai-exporter/gpu-stats)
+- [List of offers available on Vast.ai (JSON)](https://500.farm/vastai-exporter/offers)
+- [List of machines available on Vast.ai (JSON)](https://500.farm/vastai-exporter/machines)
+- [List of Vast.ai hosts (JSON)](https://500.farm/vastai-exporter/hosts)
