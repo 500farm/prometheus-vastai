@@ -135,9 +135,9 @@ func main() {
 		// index page
 		w.Write([]byte(`<html><head><title>Vast.ai Exporter</title></head><body><h1>Vast.ai Exporter</h1>`))
 		if useAccount {
-			w.Write([]byte(`<a href="/metrics">Account stats</a><br><a href="/metrics/global">Global stats</a><br>`))
+			w.Write([]byte(`<a href="/metrics">Account stats</a><br><a href="/metrics/global">Global stats</a><br><br>`))
 		} else {
-			w.Write([]byte(`<a href="/metrics">Global stats</a><br>`))
+			w.Write([]byte(`<a href="/metrics">Global stats</a><br><br>`))
 		}
 		w.Write([]byte(`<a href="/offers">JSON list of offers</a><br>`))
 		w.Write([]byte(`<a href="/machines">JSON list of machines</a><br>`))
