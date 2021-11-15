@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
+	"github.com/mpvl/unique"
 	"github.com/prometheus/common/log"
 )
 
@@ -21,54 +23,41 @@ type MapLocation struct {
 }
 
 type MapItem struct {
-	GpuName       string       `json:"gpu_name"`
-	HostIds       string       `json:"host_ids"`
-	MachineIds    string       `json:"machine_ids"`
-	NumGpus       int          `json:"num_gpus"`
-	NumGpusRented int          `json:"num_gpus_rented"`
-	IpAddresses   string       `json:"ip_addresses"`
-	Tflops        float64      `json:"tflops"`
-	Location      *MapLocation `json:"location"`
+	Gpus        map[string]int
+	HostId      int
+	MachineIds  []int
+	IpAddresses []string
+	Tflops      float64
+	Location    *MapLocation
 }
 
-type MapItems []*MapItem
-
-type MapResponse struct {
-	Items *MapItems `json:"items"`
-}
-
-func (cache *OfferCache) mapJson() []byte {
-	items := cache.wholeMachineRawOffers.prepareForMap()
-	result, err := json.MarshalIndent(MapResponse{
-		Items: &items,
-	}, "", "    ")
-	if err != nil {
-		log.Errorln(err)
-		return nil
-	}
-	return result
-}
+type MapItems []MapItem
 
 func (offers VastAiRawOffers) prepareForMap() MapItems {
-	result := make(map[string]*MapItem, len(offers))
+	result := make(map[string]MapItem, len(offers))
 
 	for _, offer := range offers {
 		location, ok := offer["location"].(*GeoLocation)
 		if ok && (location.Lat != 0 || location.Long != 0) {
-			loc := location.forMap()
+
+			gpus := make(map[string]int)
+			gpus[offer.gpuName()] = offer.numGpus()
+
 			hostId, _ := offer["host_id"].(float64)
 			ipAddr, _ := offer["public_ipaddr"].(string)
 			tflops, _ := offer["total_flops"].(float64)
-			item := &MapItem{
-				GpuName:       offer.gpuName(),
-				HostIds:       fmt.Sprintf("%.0f", hostId),
-				MachineIds:    fmt.Sprintf("%d", offer.machineId()),
-				NumGpus:       offer.numGpus(),
-				NumGpusRented: offer.numGpusRented(),
-				IpAddresses:   ipAddr,
-				Tflops:        tflops,
-				Location:      &loc,
+
+			loc := MapLocation(*location)
+
+			item := MapItem{
+				Gpus:        gpus,
+				HostId:      int(hostId),
+				MachineIds:  []int{offer.machineId()},
+				IpAddresses: []string{ipAddr},
+				Tflops:      tflops,
+				Location:    &loc,
 			}
+
 			hash := item.hash()
 			result[hash] = result[hash].merge(item)
 		}
@@ -76,9 +65,6 @@ func (offers VastAiRawOffers) prepareForMap() MapItems {
 
 	result2 := make(MapItems, 0, len(result))
 	for _, item := range result {
-		item.HostIds = makeUniqueList(item.HostIds)
-		item.MachineIds = makeUniqueList(item.MachineIds)
-		item.IpAddresses = makeUniqueList(item.IpAddresses)
 		result2 = append(result2, item)
 	}
 
@@ -89,61 +75,113 @@ func (offers VastAiRawOffers) prepareForMap() MapItems {
 	return result2
 }
 
-func (loc *GeoLocation) forMap() MapLocation {
-	return MapLocation{
-		Country:      loc.Country,
-		Location:     loc.Location,
-		Lat:          loc.Lat,
-		Long:         loc.Long,
-		Accuracy:     loc.Accuracy,
-		ISP:          loc.ISP,
-		Organization: loc.Organization,
-		Domain:       loc.Domain,
-	}
-}
-
 func (item MapItem) hash() string {
-	return fmt.Sprintf("%s:%.3f:%.3f:%s", item.GpuName, item.Location.Lat, item.Location.Long, item.Location.ISP)
+	return fmt.Sprintf("%d:%.3f:%.3f:%s", item.HostId, item.Location.Lat, item.Location.Long, item.Location.ISP)
 }
 
-func (item1 *MapItem) merge(item2 *MapItem) *MapItem {
-	if item1 == nil {
-		return item2
+func (item1 MapItem) merge(item2 MapItem) MapItem {
+	gpus := make(map[string]int)
+	if item1.Gpus != nil {
+		for name, count := range item1.Gpus {
+			gpus[name] += count
+		}
 	}
-	return &MapItem{
-		GpuName:       item1.GpuName,
-		HostIds:       mergeLists(item1.HostIds, item2.HostIds),
-		MachineIds:    mergeLists(item1.MachineIds, item2.MachineIds),
-		NumGpus:       item1.NumGpus + item2.NumGpus,
-		NumGpusRented: item1.NumGpusRented + item2.NumGpusRented,
-		IpAddresses:   mergeLists(item1.IpAddresses, item2.IpAddresses),
-		Tflops:        item1.Tflops + item2.Tflops,
-		Location:      item1.Location,
+	for name, count := range item2.Gpus {
+		gpus[name] += count
+	}
+	return MapItem{
+		Gpus:        gpus,
+		HostId:      item2.HostId,
+		MachineIds:  append(item1.MachineIds, item2.MachineIds...),
+		IpAddresses: append(item1.IpAddresses, item2.IpAddresses...),
+		Tflops:      item1.Tflops + item2.Tflops,
+		Location:    item2.Location,
 	}
 }
 
-func mergeLists(l1 string, l2 string) string {
-	result := l1
-	if l1 != "" {
-		result += ","
+type MapItemJson struct {
+	Gpus        string       `json:"gpus"`
+	HostId      string       `json:"host_id"`
+	MachineIds  string       `json:"machine_ids"`
+	IpAddresses string       `json:"ip_addresses"`
+	Tflops      float64      `json:"tflops"`
+	Location    *MapLocation `json:"location"`
+}
+
+type MapItemsJson []MapItemJson
+
+type MapResponse struct {
+	Items MapItemsJson `json:"items"`
+}
+
+func (cache *OfferCache) mapJson() []byte {
+	items := cache.wholeMachineRawOffers.prepareForMap()
+
+	itemsForJson := make(MapItemsJson, 0, len(items))
+	for _, item := range items {
+		itemsForJson = append(itemsForJson, item.forJson())
 	}
-	result += l2
+
+	result, err := json.MarshalIndent(MapResponse{
+		Items: itemsForJson,
+	}, "", "    ")
+	if err != nil {
+		log.Errorln(err)
+		return nil
+	}
 	return result
 }
 
-func makeUniqueList(s string) string {
-	l := strings.Split(s, ",")
-	return strings.Join(unique(l), ", ")
+func (item MapItem) forJson() MapItemJson {
+	return MapItemJson{
+		Location:    item.Location,
+		Gpus:        gpusToString(item.Gpus),
+		HostId:      strconv.Itoa(item.HostId),
+		MachineIds:  intListToString(item.MachineIds),
+		IpAddresses: listToString(item.IpAddresses),
+		Tflops:      item.Tflops,
+	}
 }
 
-func unique(data []string) []string {
-	m := make(map[string]bool)
-	for _, s := range data {
-		m[s] = true
+func gpusToString(m map[string]int) string {
+	type Gpu struct {
+		name  string
+		count int
 	}
-	result := make([]string, 0, len(data))
-	for s := range m {
-		result = append(result, s)
+	gpus := make([]Gpu, 0, len(m))
+	for name, count := range m {
+		gpus = append(gpus, Gpu{name: name, count: count})
 	}
-	return result
+	sort.Slice(gpus, func(i, j int) bool {
+		c1 := gpus[i].count
+		c2 := gpus[j].count
+		if c1 == c2 {
+			return gpus[i].name < gpus[j].name
+		}
+		return c1 > c2
+	})
+	strs := make([]string, 0, len(gpus))
+	for _, gpu := range gpus {
+		strs = append(strs, fmt.Sprintf("%dx %s", gpu.count, gpu.name))
+	}
+	return strings.Join(strs, ", ")
+}
+
+func intListToString(ints []int) string {
+	sort.Ints(ints)
+	unique.Ints(&ints)
+	r := ""
+	for _, i := range ints {
+		if r != "" {
+			r += ", "
+		}
+		r += strconv.Itoa(i)
+	}
+	return r
+}
+
+func listToString(strs []string) string {
+	sort.Strings(strs)
+	unique.Strings(&strs)
+	return strings.Join(strs, ", ")
 }
