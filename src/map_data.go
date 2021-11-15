@@ -22,8 +22,10 @@ type MapLocation struct {
 	Domain       string  `json:"domain"`
 }
 
+type GpuCounts map[string]int
+
 type MapItem struct {
-	Gpus        map[string]int
+	Gpus        GpuCounts
 	HostId      int
 	MachineIds  []int
 	IpAddresses []string
@@ -40,7 +42,7 @@ func (offers VastAiRawOffers) prepareForMap() MapItems {
 		location, ok := offer["location"].(*GeoLocation)
 		if ok && (location.Lat != 0 || location.Long != 0) {
 
-			gpus := make(map[string]int)
+			gpus := make(GpuCounts)
 			gpus[offer.gpuName()] = offer.numGpus()
 
 			hostId, _ := offer["host_id"].(float64)
@@ -80,11 +82,9 @@ func (item MapItem) hash() string {
 }
 
 func (item1 MapItem) merge(item2 MapItem) MapItem {
-	gpus := make(map[string]int)
-	if item1.Gpus != nil {
-		for name, count := range item1.Gpus {
-			gpus[name] += count
-		}
+	gpus := item1.Gpus
+	if gpus == nil {
+		gpus = make(GpuCounts)
 	}
 	for name, count := range item2.Gpus {
 		gpus[name] += count
@@ -135,7 +135,7 @@ func (cache *OfferCache) mapJson() []byte {
 func (item MapItem) forJson() MapItemJson {
 	return MapItemJson{
 		Location:    item.Location,
-		Gpus:        gpusToString(item.Gpus),
+		Gpus:        item.Gpus.String(),
 		HostId:      strconv.Itoa(item.HostId),
 		MachineIds:  intListToString(item.MachineIds),
 		IpAddresses: listToString(item.IpAddresses),
@@ -143,7 +143,7 @@ func (item MapItem) forJson() MapItemJson {
 	}
 }
 
-func gpusToString(m map[string]int) string {
+func (m GpuCounts) String() string {
 	type Gpu struct {
 		name  string
 		count int
