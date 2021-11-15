@@ -241,6 +241,10 @@ func (offers VastAiRawOffers) filterWholeMachines(prevResult VastAiRawOffers) Va
 		result = append(result, newOffer)
 	}
 
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].machineId() > result[j].machineId()
+	})
+
 	return result
 }
 

@@ -41,6 +41,7 @@ type RawOffersResponse struct {
 	Url       string           `json:"url"`
 	Timestamp time.Time        `json:"timestamp"`
 	Count     int              `json:"count"`
+	Note      string           `json:"note,omitempty"`
 	Offers    *VastAiRawOffers `json:"offers"`
 }
 
@@ -53,10 +54,15 @@ func (cache *OfferCache) rawOffersJson(wholeMachines bool) []byte {
 	} else {
 		offers = &cache.rawOffers
 	}
+	note := ""
+	if wholeMachines {
+		note = "Sorted from newest to oldest"
+	}
 	result, err := json.MarshalIndent(RawOffersResponse{
 		Url:       url,
 		Timestamp: cache.ts.UTC(),
 		Count:     len(*offers),
+		Note:      note,
 		Offers:    offers,
 	}, "", "    ")
 	if err != nil {
