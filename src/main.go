@@ -67,7 +67,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	log.Infoln("Reading initial Vast.ai info")
+	log.Infoln("Reading initial Vast.ai info (may take a minute)")
 
 	// read info from vast.ai: offers
 	info := getVastAiInfo(*masterUrl)
