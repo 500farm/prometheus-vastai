@@ -444,7 +444,7 @@ func (e *VastAiAccountCollector) UpdatePayouts(info VastAiApiResults) {
 
 func (e *VastAiAccountCollector) InitialUpdateFrom(info VastAiApiResults, offerCache *OfferCache) error {
 	if info.myInstances == nil || info.myMachines == nil || info.payouts == nil {
-		return errors.New("Could not read all required data from Vast.ai")
+		return errors.New("could not read all required data from Vast.ai")
 	}
 
 	if e.lastPayouts != nil {

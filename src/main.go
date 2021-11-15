@@ -60,7 +60,10 @@ func main() {
 		*stateDir = "/tmp"
 	}
 
-	if err := loadGeoCache(); err != nil {
+	// load or init geolocation cache (will be nil if MaxMind key is not supploid)
+	var err error
+	geoCache, err = loadGeoCache()
+	if err != nil {
 		log.Fatalln(err)
 	}
 
@@ -68,7 +71,7 @@ func main() {
 
 	// read info from vast.ai: offers
 	info := getVastAiInfo(*masterUrl)
-	err := offerCache.InitialUpdateFrom(info)
+	err = offerCache.InitialUpdateFrom(info)
 	if err != nil {
 		// initial update must succeed, otherwise exit
 		log.Fatalln(err)

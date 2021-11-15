@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -21,11 +22,21 @@ type GeoLocation struct {
 	ISP          string  `json:"isp,omitempty"`
 	Organization string  `json:"organization,omitempty"`
 	Domain       string  `json:"domain,omitempty"`
-
-	expires time.Time
 }
 
-type GeoCache map[string]*GeoLocation
+type GeoCacheEntry struct {
+	Expires  time.Time
+	Location *GeoLocation
+}
+
+type GeoCacheEntries map[string]GeoCacheEntry
+
+type GeoCache struct {
+	Entries     GeoCacheEntries
+	maxMindUser string
+	maxMindPass string
+	failed      bool
+}
 
 type MaxMindResponse struct {
 	Country struct {
@@ -55,41 +66,86 @@ type MaxMindResponse struct {
 }
 
 const GeoLocationTTL = 7 * 24 * time.Hour
+const GeoLocationTTLVariance = 3 * time.Hour
 
-var (
-	geoCache      GeoCache
-	maxMindUser   string
-	maxMindPass   string
-	maxMindFailed bool
-)
+var geoCache *GeoCache
 
-func ipLocation(ip string) *GeoLocation {
-	if !useMaxMind() {
+func newGeoCache() *GeoCache {
+	return &GeoCache{
+		Entries: make(GeoCacheEntries),
+	}
+}
+
+func loadGeoCache() (*GeoCache, error) {
+	if *maxMindKey == "" {
+		return nil, nil
+	}
+
+	cache := newGeoCache()
+
+	t := strings.Split(*maxMindKey, ":")
+	if len(t) != 2 {
+		return nil, fmt.Errorf(`invalid MaxMind auth "%s": please specify user id and license key separated with ":"`, *maxMindKey)
+	}
+	cache.maxMindUser = t[0]
+	cache.maxMindPass = t[1]
+
+	j, err := ioutil.ReadFile(geoCacheFile())
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+	} else {
+		err := json.Unmarshal(j, &cache)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cache.removeExpired()
+	log.Infof("Loaded geolocation cache: %d items", len(cache.Entries))
+	return cache, nil
+}
+
+func (cache *GeoCache) ipLocation(ip string) *GeoLocation {
+	entry, found := cache.Entries[ip]
+	if found && !entry.expired() {
+		return entry.Location
+	}
+
+	if cache.failed {
 		return nil
 	}
 
-	r := geoCache[ip]
-	if r != nil && r.expires.After(time.Now()) {
-		return r
-	}
-
-	r, err := queryMaxMind(ip)
+	location, err := cache.queryMaxMind(ip)
 	if err == nil {
-		geoCache[ip] = r
+		cache.Entries[ip] = GeoCacheEntry{
+			Expires:  makeExpireTime(),
+			Location: location,
+		}
 	} else {
 		log.Errorln(err)
 	}
-	return r
+	return location
 }
 
-func queryMaxMind(ip string) (*GeoLocation, error) {
+func (cache *GeoCache) save() {
+	cache.removeExpired()
+	j, _ := json.MarshalIndent(cache, "", "    ")
+	err := ioutil.WriteFile(geoCacheFile(), j, 0600)
+	if err != nil {
+		log.Errorln(err)
+	}
+}
+
+func (cache *GeoCache) queryMaxMind(ip string) (*GeoLocation, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	url := fmt.Sprintf("https://geoip.maxmind.com/geoip/v2.1/city/%s?pretty", ip)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(maxMindUser, maxMindPass)
+	req.SetBasicAuth(cache.maxMindUser, cache.maxMindPass)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -101,16 +157,15 @@ func queryMaxMind(ip string) (*GeoLocation, error) {
 	}
 	code := resp.StatusCode
 	if code == 404 {
-		// IP not found in database, it's not an error, return empty record
-		return &GeoLocation{
-			expires: time.Now().Add(GeoLocationTTL),
-		}, nil
+		// IP not found in database, it's not an error
+		log.Warnln("IP not found by MaxMind:", ip)
+		return nil, nil
 	}
 	if code != 200 {
 		log.Errorln(string(body))
 		if code == 401 || code == 402 {
 			// 401 Unauthorized or 402 Payment Required
-			maxMindFailed = true
+			cache.failed = true
 			log.Errorln("Disabling MaxMind until restart because of following:")
 		}
 		return nil, fmt.Errorf("%s returned: %s", url, resp.Status)
@@ -129,10 +184,10 @@ func queryMaxMind(ip string) (*GeoLocation, error) {
 		Accuracy: j.Location.Accuracy,
 		ISP:      j.Traits.Isp,
 		Domain:   j.Traits.Domain,
-		expires:  time.Now().Add(GeoLocationTTL),
 	}
-	for _, sd := range j.SubDivisions {
-		name := sd.Names.En
+	for i := len(j.SubDivisions) - 1; i >= 0; i-- {
+		name := j.SubDivisions[i].Names.En
+		name = strings.Replace(name, "St.-", "St ", -1) // St.-Petersburg => St Petersburg
 		if name != j.City.Names.En {
 			if r.Location != "" {
 				r.Location += ", "
@@ -146,50 +201,30 @@ func queryMaxMind(ip string) (*GeoLocation, error) {
 	return &r, nil
 }
 
-func loadGeoCache() error {
-	if !useMaxMind() {
-		return nil
-	}
-
-	t := strings.Split(*maxMindKey, ":")
-	if len(t) != 2 {
-		return fmt.Errorf(`invalid MaxMind auth "%s": please specify user id and license key separated with ":"`, *maxMindKey)
-	}
-	maxMindUser = t[0]
-	maxMindPass = t[1]
-
-	geoCache = make(GeoCache)
-	j, err := ioutil.ReadFile(geoCacheFile())
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-	} else {
-		err := json.Unmarshal(j, &geoCache)
-		if err != nil {
-			return err
-		}
-	}
-	log.Infof("Loaded geolocation cache: %d items", len(geoCache))
-	return nil
+func (cache *GeoCache) removeExpired() {
+	cache.Entries = cache.Entries.removeExpired()
 }
 
-func saveGeoCache() {
-	if !useMaxMind() {
-		return
-	}
+func (entry *GeoCacheEntry) expired() bool {
+	return entry.Expires.Before(time.Now())
+}
 
-	j, _ := json.Marshal(geoCache)
-	err := ioutil.WriteFile(geoCacheFile(), j, 0600)
-	if err != nil {
-		log.Errorln(err)
+func (entries GeoCacheEntries) removeExpired() GeoCacheEntries {
+	newEntries := make(GeoCacheEntries)
+	for ip, entry := range entries {
+		if !entry.expired() {
+			newEntries[ip] = entry
+		}
 	}
+	return newEntries
+}
+
+func makeExpireTime() time.Time {
+	// randomize so all entries do not expire at the same time
+	extra := time.Duration(rand.Int63n(int64(GeoLocationTTLVariance)))
+	return time.Now().Add(GeoLocationTTL).Add(extra)
 }
 
 func geoCacheFile() string {
 	return *stateDir + "/.vastai_geo_cache"
-}
-
-func useMaxMind() bool {
-	return *maxMindKey != "" && !maxMindFailed
 }

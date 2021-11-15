@@ -23,13 +23,15 @@ func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 		cache.wholeMachineRawOffers = cache.rawOffers.filterWholeMachines(cache.wholeMachineRawOffers)
 		cache.machines = cache.wholeMachineRawOffers.decode()
 		cache.ts = apiRes.ts
-		saveGeoCache()
+		if geoCache != nil {
+			geoCache.save()
+		}
 	}
 }
 
 func (cache *OfferCache) InitialUpdateFrom(apiRes VastAiApiResults) error {
 	if apiRes.offers == nil {
-		return errors.New("Could not read offer data from Vast.ai")
+		return errors.New("could not read offer data from Vast.ai")
 	}
 	cache.UpdateFrom(apiRes)
 	return nil

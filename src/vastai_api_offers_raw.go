@@ -37,7 +37,7 @@ func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 		return err
 	}
 	if j.Url != "/offers" {
-		return fmt.Errorf("Not a Vast.ai exporter URL: %s", masterUrl)
+		return fmt.Errorf("not a Vast.ai exporter URL: %s", masterUrl)
 	}
 	result.ts = j.Timestamp
 	result.offers = j.Offers
@@ -229,10 +229,10 @@ func (offers VastAiRawOffers) filterWholeMachines(prevResult VastAiRawOffers) Va
 		}
 
 		// - add geolocation
-		if useMaxMind() {
+		if geoCache != nil {
 			ip, _ := wholeOffer["public_ipaddr"].(string)
 			if ip != "" {
-				if location := ipLocation(ip); location != nil {
+				if location := geoCache.ipLocation(ip); location != nil {
 					newOffer["location"] = location
 				}
 			}
