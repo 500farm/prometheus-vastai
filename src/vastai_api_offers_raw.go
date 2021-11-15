@@ -229,7 +229,6 @@ func (offers VastAiRawOffers) filterWholeMachines(prevResult VastAiRawOffers) Va
 		}
 
 		// - add geolocation
-		// TODO move out of the loop, log number of queries and time used
 		if useMaxMind() {
 			ip, _ := wholeOffer["public_ipaddr"].(string)
 			if ip != "" {

@@ -25,6 +25,8 @@ type GeoLocation struct {
 	expires time.Time
 }
 
+type GeoCache map[string]*GeoLocation
+
 type MaxMindResponse struct {
 	Country struct {
 		IsoCode string `json:"iso_code"`
@@ -55,21 +57,19 @@ type MaxMindResponse struct {
 const GeoLocationTTL = 7 * 24 * time.Hour
 
 var (
-	geoCache      map[string]*GeoLocation
+	geoCache      GeoCache
 	maxMindUser   string
 	maxMindPass   string
 	maxMindFailed bool
 )
 
-// TODO cache 404
 func ipLocation(ip string) *GeoLocation {
 	if !useMaxMind() {
 		return nil
 	}
 
 	r := geoCache[ip]
-	now := time.Now()
-	if r != nil && r.expires.After(now) {
+	if r != nil && r.expires.After(time.Now()) {
 		return r
 	}
 
@@ -100,6 +100,10 @@ func queryMaxMind(ip string) (*GeoLocation, error) {
 		return nil, err
 	}
 	code := resp.StatusCode
+	if code == 404 {
+		// IP not found in database, it's not an error, return empty record
+		return &GeoLocation{}, nil
+	}
 	if code != 200 {
 		log.Errorln(string(body))
 		if code == 401 || code == 402 {
@@ -152,7 +156,7 @@ func loadGeoCache() error {
 	maxMindUser = t[0]
 	maxMindPass = t[1]
 
-	geoCache = make(map[string]*GeoLocation)
+	geoCache = make(GeoCache)
 	j, err := ioutil.ReadFile(geoCacheFile())
 	if err != nil {
 		if !os.IsNotExist(err) {
