@@ -102,7 +102,12 @@ func main() {
 	http.HandleFunc("/machines", func(w http.ResponseWriter, r *http.Request) {
 		// json list of machines
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(offerCache.rawOffersJson(true))
+		if r.URL.Query().Get("formap") != "" {
+			// for geomap
+			w.Write(offerCache.mapJson())
+		} else {
+			w.Write(offerCache.rawOffersJson(true))
+		}
 	})
 	http.HandleFunc("/gpu-stats", func(w http.ResponseWriter, r *http.Request) {
 		// json gpu stats

@@ -223,7 +223,7 @@ func (offers VastAiRawOffers) filterWholeMachines(prevResult VastAiRawOffers) Va
 			"min_chunk":       minChunkSize,
 		}
 		for k, v := range wholeOffer {
-			if k != "gpu_frac" && k != "rentable" && k != "bundle_id" && k != "cpu_cores_effective" && k != "hostname" {
+			if k != "gpu_frac" && k != "rentable" && k != "bundle_id" && k != "cpu_cores_effective" && k != "hostname" && k != "id" {
 				newOffer[k] = v
 			}
 		}
@@ -245,6 +245,26 @@ func (offers VastAiRawOffers) filterWholeMachines(prevResult VastAiRawOffers) Va
 		return result[i].machineId() > result[j].machineId()
 	})
 
+	return result
+}
+
+func (offers VastAiRawOffers) filterForMap() VastAiRawOffers {
+	result := make(VastAiRawOffers, 0, len(offers))
+	for _, offer := range offers {
+		location, ok := offer["location"].(*GeoLocation)
+		if ok && (location.Lat != 0 || location.Long != 0) {
+			newOffer := VastAiRawOffer{
+				"location": location.forMap(),
+			}
+			for k, v := range offer {
+				if k == "gpu_name" || k == "host_id" || k == "inet_down" || k == "inet_up" || k == "machine_id" || k == "num_gpus" ||
+					k == "num_gpus_rented" || k == "public_ipaddr" || k == "total_flops" || k == "verified" {
+					newOffer[k] = v
+				}
+			}
+			result = append(result, newOffer)
+		}
+	}
 	return result
 }
 
