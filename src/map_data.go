@@ -83,7 +83,7 @@ func (offers VastAiRawOffers) prepareForMap() MapItems {
 	}
 
 	sort.Slice(result2, func(i, j int) bool {
-		return result2[i].MachineIds > result2[j].MachineIds
+		return result2[i].Tflops > result2[j].Tflops
 	})
 
 	return result2
@@ -103,7 +103,7 @@ func (loc *GeoLocation) forMap() MapLocation {
 }
 
 func (item MapItem) hash() string {
-	return fmt.Sprintf("%s:%.3f:%.3f", item.GpuName, item.Location.Lat, item.Location.Long)
+	return fmt.Sprintf("%s:%.3f:%.3f:%s", item.GpuName, item.Location.Lat, item.Location.Long, item.Location.ISP)
 }
 
 func (item1 *MapItem) merge(item2 *MapItem) *MapItem {
