@@ -16,7 +16,7 @@ var (
 	listenAddress = kingpin.Flag(
 		"listen",
 		"Address to listen on.",
-	).Default("0.0.0.0:8622").String()
+	).Default(":8622").String()
 	apiKey = kingpin.Flag(
 		"key",
 		"Vast.ai API key",
@@ -33,6 +33,10 @@ var (
 		"master-url",
 		"Query global data from the master exporter and not from Vast.ai directly.",
 	).String()
+	maxMindKey = kingpin.Flag(
+		"maxmind-key",
+		"API key for MaxMind GeoIP web services.",
+	).PlaceHolder("USERID:KEY").String()
 )
 
 func metricsHandler(w http.ResponseWriter, r *http.Request, collector prometheus.Collector) {
@@ -54,6 +58,10 @@ func main() {
 	}
 	if *stateDir == "" {
 		*stateDir = "/tmp"
+	}
+
+	if err := loadGeoCache(); err != nil {
+		log.Fatalln(err)
 	}
 
 	log.Infoln("Reading initial Vast.ai info")

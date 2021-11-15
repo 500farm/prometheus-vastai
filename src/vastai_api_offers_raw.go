@@ -223,10 +223,22 @@ func (offers VastAiRawOffers) filterWholeMachines(prevResult VastAiRawOffers) Va
 			"min_chunk":       minChunkSize,
 		}
 		for k, v := range wholeOffer {
-			if k != "gpu_frac" && k != "rentable" && k != "bundle_id" && k != "cpu_cores_effective" {
+			if k != "gpu_frac" && k != "rentable" && k != "bundle_id" && k != "cpu_cores_effective" && k != "hostname" {
 				newOffer[k] = v
 			}
 		}
+
+		// - add geolocation
+		// TODO move out of the loop, log number of queries and time used
+		if useMaxMind() {
+			ip, _ := wholeOffer["public_ipaddr"].(string)
+			if ip != "" {
+				if location := ipLocation(ip); location != nil {
+					newOffer["location"] = location
+				}
+			}
+		}
+
 		result = append(result, newOffer)
 	}
 
