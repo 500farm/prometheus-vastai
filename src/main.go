@@ -133,6 +133,10 @@ func main() {
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// index page
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
 		w.Write([]byte(`<html><head><title>Vast.ai Exporter</title></head><body><h1>Vast.ai Exporter</h1>`))
 		if useAccount {
 			w.Write([]byte(`<a href="/metrics">Account stats</a><br><a href="/metrics/global">Global stats</a><br><br>`))
