@@ -28,9 +28,10 @@ type OfferStats struct {
 }
 
 type GpuInfo struct {
-	Vram   float64 `json:"vram"`
-	Dlperf float64 `json:"dlperf"`
-	Tflops float64 `json:"tflops"`
+	Vram        float64 `json:"vram"`
+	Dlperf      float64 `json:"dlperf"`
+	Tflops      float64 `json:"tflops"`
+	EthHashRate float64 `json:"eth_hash_rate,omitempty"` // gh/s
 }
 
 type OfferStats2 struct {
@@ -173,9 +174,10 @@ func (offers VastAiOffers) gpuInfo() *GpuInfo {
 	}
 
 	return &GpuInfo{
-		Vram:   vram,
-		Dlperf: dlperf,
-		Tflops: tflops,
+		Vram:        vram,
+		Dlperf:      dlperf,
+		Tflops:      tflops,
+		EthHashRate: HashRates[offers[0].GpuName] / 1000,
 	}
 }
 

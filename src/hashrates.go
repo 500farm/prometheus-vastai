@@ -1,0 +1,36 @@
+package main
+
+type HashRateMap map[string]float64
+
+var HashRates HashRateMap = HashRateMap{ // MH/s
+	// "A10": ,
+	"A100 PCIE": 170,
+	"A100 SXM4": 170,
+	// "A40": ,
+	// "GTX 1070": ,
+	// "GTX 1070 Ti": ,
+	// "GTX 1080": ,
+	// "GTX 1080 Ti": ,
+	// "Q RTX 5000": ,
+	// "Q RTX 6000": ,
+	// "Q RTX 8000": ,
+	// "RTX 2070": ,
+	// "RTX 2070S": ,
+	// "RTX 2080": ,
+	// "RTX 2080 Ti": ,
+	// "RTX 3060": ,
+	// "RTX 3060 Ti": ,
+	// "RTX 3070": ,
+	// "RTX 3080": ,
+	// "RTX 3080 Ti": ,
+	"RTX 3090": 106,
+	// "RTX A4000": ,
+	// "RTX A5000": ,
+	// "RTX A6000": ,
+	// "Tesla K80": ,
+	// "Tesla P100": ,
+	// "Tesla T4": ,
+	// "Tesla V100": ,
+	// "Titan RTX": ,
+	// "Titan Xp": ,
+}

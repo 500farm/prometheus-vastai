@@ -14,6 +14,7 @@ type VastAiGlobalCollector struct {
 	gpu_vram_gigabytes                     *prometheus.GaugeVec
 	gpu_teraflops                          *prometheus.GaugeVec
 	gpu_dlperf_score                       *prometheus.GaugeVec
+	gpu_eth_hashrate_ghs                   *prometheus.GaugeVec
 }
 
 func newVastAiGlobalCollector() *VastAiGlobalCollector {
@@ -58,6 +59,11 @@ func newVastAiGlobalCollector() *VastAiGlobalCollector {
 			Name:      "gpu_dlperf_score",
 			Help:      "DLPerf score of the GPU model",
 		}, labelNames2),
+		gpu_eth_hashrate_ghs: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "gpu_eth_hashrate_ghs",
+			Help:      "Approximate ETH hash rate of the GPU model",
+		}, labelNames2),
 	}
 }
 
@@ -69,6 +75,7 @@ func (e *VastAiGlobalCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.gpu_vram_gigabytes.Describe(ch)
 	e.gpu_teraflops.Describe(ch)
 	e.gpu_dlperf_score.Describe(ch)
+	e.gpu_eth_hashrate_ghs.Describe(ch)
 }
 
 func (e *VastAiGlobalCollector) Collect(ch chan<- prometheus.Metric) {
@@ -79,6 +86,7 @@ func (e *VastAiGlobalCollector) Collect(ch chan<- prometheus.Metric) {
 	e.gpu_vram_gigabytes.Collect(ch)
 	e.gpu_teraflops.Collect(ch)
 	e.gpu_dlperf_score.Collect(ch)
+	e.gpu_eth_hashrate_ghs.Collect(ch)
 }
 
 func (e *VastAiGlobalCollector) UpdateFrom(offerCache *OfferCache) {
@@ -120,6 +128,9 @@ func (e *VastAiGlobalCollector) UpdateFrom(offerCache *OfferCache) {
 			e.gpu_vram_gigabytes.With(labels).Set(info.Vram)
 			e.gpu_dlperf_score.With(labels).Set(info.Dlperf)
 			e.gpu_teraflops.With(labels).Set(info.Tflops)
+			if info.EthHashRate > 0 {
+				e.gpu_eth_hashrate_ghs.With(labels).Set(info.EthHashRate)
+			}
 		}
 	}
 }
