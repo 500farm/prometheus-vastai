@@ -39,7 +39,7 @@ func (cache *OfferCache) hostsJson() []byte {
 		Url:       "/hosts",
 		Timestamp: cache.ts.UTC(),
 		Count:     len(hosts),
-		Note:      "Sorted by total TFLOPS (largest first)",
+		Note:      "Sorted by total TFLOPS (largest first). Hosts with multiple geo locations are split into multiple records.",
 		Hosts:     &hosts,
 	}, "", "    ")
 	if err != nil {

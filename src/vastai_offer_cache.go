@@ -57,7 +57,7 @@ func (cache *OfferCache) rawOffersJson(wholeMachines bool) []byte {
 	}
 	note := ""
 	if wholeMachines {
-		note = "Sorted from newest to oldest"
+		note = "Sorted from newest to oldest."
 	}
 	result, err := json.MarshalIndent(RawOffersResponse{
 		Url:       url,
@@ -91,7 +91,7 @@ func (cache *OfferCache) gpuStatsJson() []byte {
 	result := GpuStatsResponse{
 		Url:       "/gpu-stats",
 		Timestamp: cache.ts.UTC(),
-		Note:      "Sorted from most to least popular",
+		Note:      "Sorted from most to least popular.",
 	}
 
 	for gpuName, offers := range groupedOffers {
