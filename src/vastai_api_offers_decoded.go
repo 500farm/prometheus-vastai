@@ -73,7 +73,9 @@ func (offers VastAiOffers) groupByGpu() GroupedOffers {
 	offersByGpu := make(GroupedOffers)
 	for _, offer := range offers {
 		name := offer.GpuName
-		offersByGpu[name] = append(offersByGpu[name], offer)
+		if name != "" {
+			offersByGpu[name] = append(offersByGpu[name], offer)
+		}
 	}
 	return offersByGpu
 }
