@@ -38,6 +38,7 @@ type VastAiAccountCollector struct {
 	machine_ondemand_price_per_gpu_dollars *prometheus.GaugeVec
 	machine_gpu_count                      *prometheus.GaugeVec
 	machine_rentals_count                  *prometheus.GaugeVec
+	machine_used_gpu_count                 *prometheus.GaugeVec
 
 	instance_info                    *prometheus.GaugeVec
 	instance_is_running              *prometheus.GaugeVec
@@ -143,6 +144,11 @@ func newVastAiAccountCollector() *VastAiAccountCollector {
 			Name:      "machine_rentals_count",
 			Help:      "Count of current rentals (rental_type = 'ondemand'/'bid'/'default', rental_status = 'running'/'stopped')",
 		}, []string{"machine_id", "rental_type", "rental_status"}),
+		machine_used_gpu_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "machine_used_gpu_count",
+			Help:      "Number of GPUs running jobs (only available for rental_type = 'ondemand'/'default')",
+		}, []string{"machine_id", "rental_type"}),
 
 		instance_info: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -202,6 +208,7 @@ func (e *VastAiAccountCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.machine_ondemand_price_per_gpu_dollars.Describe(ch)
 	e.machine_gpu_count.Describe(ch)
 	e.machine_rentals_count.Describe(ch)
+	e.machine_used_gpu_count.Describe(ch)
 
 	e.instance_info.Describe(ch)
 	e.instance_is_running.Describe(ch)
@@ -231,6 +238,7 @@ func (e *VastAiAccountCollector) Collect(ch chan<- prometheus.Metric) {
 	e.machine_ondemand_price_per_gpu_dollars.Collect(ch)
 	e.machine_gpu_count.Collect(ch)
 	e.machine_rentals_count.Collect(ch)
+	e.machine_used_gpu_count.Collect(ch)
 
 	e.instance_info.Collect(ch)
 	e.instance_is_running.Collect(ch)
@@ -335,24 +343,37 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 		t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "running"}).Set(float64(countBidRunning))
 		t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "stopped"}).Set(float64(countBidStopped))
 
+		// get number of gpus rented on-demand from offer list
+		numGpusRentedOndemand := -1
+		for _, offer := range offerCache.machines {
+			if offer.MachineId == machine.Id {
+				numGpusRentedOndemand = offer.NumGpusRented
+				break
+			}
+		}
+
 		// count my/default jobs
 		if info.myInstances != nil {
 			defJobsRunning := 0
 			defJobsStopped := 0
 			myJobsRunning := 0
 			myJobsStopped := 0
+			defJobsUsedGpus := 0
+			myJobsUsedGpus := 0
 
 			for _, instance := range *info.myInstances {
 				if instance.MachineId == machine.Id {
 					if instance.isDefaultJob() {
 						if instance.ActualStatus == "running" {
 							defJobsRunning++
+							defJobsUsedGpus += instance.NumGpus
 						} else {
 							defJobsStopped++
 						}
 					} else {
 						if instance.ActualStatus == "running" {
 							myJobsRunning++
+							myJobsUsedGpus += instance.NumGpus
 						} else {
 							myJobsStopped++
 						}
@@ -364,7 +385,23 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 			t.With(prometheus.Labels{"rental_type": "default", "rental_status": "stopped"}).Set(float64(defJobsStopped))
 			t.With(prometheus.Labels{"rental_type": "my", "rental_status": "running"}).Set(float64(myJobsRunning))
 			t.With(prometheus.Labels{"rental_type": "my", "rental_status": "stopped"}).Set(float64(myJobsStopped))
+
+			// count gpus used by various kind of jobs
+			u := e.machine_used_gpu_count.MustCurryWith(labels)
+			u.With(prometheus.Labels{"rental_type": "default"}).Set(float64(defJobsUsedGpus))
+			u.With(prometheus.Labels{"rental_type": "my"}).Set(float64(myJobsUsedGpus))
+			if numGpusRentedOndemand >= 0 {
+				u.With(prometheus.Labels{"rental_type": "ondemand"}).Set(float64(numGpusRentedOndemand))
+				if defJobsRunning+defJobsStopped == machine.NumGpus {
+					// Can not directly determine number of gpus used by bid jobs.
+					// However, if there is a default job on every gpu, we can assume that a gpu not used neither by an ondemand job, a default job,
+					// nor an owner's job is rented interruptible.
+					u.With(prometheus.Labels{"rental_type": "bid"}).
+						Set(float64(machine.NumGpus - defJobsUsedGpus - myJobsUsedGpus - numGpusRentedOndemand))
+				}
+			}
 		}
+
 	}
 
 	// process instances
