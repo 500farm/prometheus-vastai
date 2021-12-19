@@ -142,12 +142,12 @@ func newVastAiAccountCollector() *VastAiAccountCollector {
 		machine_rentals_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_rentals_count",
-			Help:      "Count of current rentals (rental_type = 'ondemand'/'bid'/'default', rental_status = 'running'/'stopped')",
+			Help:      "Count of current rentals (rental_type = 'ondemand'/'bid'/'default'/'my', rental_status = 'running'/'stopped')",
 		}, []string{"machine_id", "rental_type", "rental_status"}),
 		machine_used_gpu_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_used_gpu_count",
-			Help:      "Number of GPUs running jobs (only available for rental_type = 'ondemand'/'default')",
+			Help:      "Number of GPUs running jobs (rental_type = 'ondemand'/'bid'/'default'/'my')",
 		}, []string{"machine_id", "rental_type"}),
 
 		instance_info: prometheus.NewGaugeVec(prometheus.GaugeOpts{

@@ -4,7 +4,7 @@ For [Vast.ai](https://vast.ai) hosts.
 
 Prometheus exporter reporting data from your Vast.ai account:
 
-- Stats of your machines: reliability, inet speed, number of client jobs running.
+- Stats of your machines: reliability, inet speed, number of client jobs running, number of gpus used.
 - Stats of your own instances: on-demand and default.
 - Paid and pending balance of your account.
 - Your on-demand and bid prices. 
@@ -95,7 +95,7 @@ vastai_machine_ondemand_price_per_gpu_dollars{machine_id="3100"} 0.7
 vastai_machine_reliability{machine_id="2100"} 0.9930448
 vastai_machine_reliability{machine_id="3100"} 0.9925481
 
-# HELP vastai_machine_rentals_count Count of current rentals (rental_type = 'ondemand'/'bid'/'default', rental_status = 'running'/'stopped')
+# HELP vastai_machine_rentals_count Count of current rentals (rental_type = 'ondemand'/'bid'/'default'/'my', rental_status = 'running'/'stopped')
 vastai_machine_rentals_count{machine_id="2100",rental_status="running",rental_type="bid"} 1
 vastai_machine_rentals_count{machine_id="2100",rental_status="running"} 0
 vastai_machine_rentals_count{machine_id="2100",rental_status="running",rental_type="my"} 0
@@ -112,6 +112,17 @@ vastai_machine_rentals_count{machine_id="3100",rental_status="stopped",rental_ty
 vastai_machine_rentals_count{machine_id="3100",rental_status="stopped"} 4
 vastai_machine_rentals_count{machine_id="3100",rental_status="stopped",rental_type="my"} 0
 vastai_machine_rentals_count{machine_id="3100",rental_status="stopped",rental_type="ondemand"} 6
+
+# HELP vastai_machine_used_gpu_count Number of GPUs running jobs (rental_type = 'ondemand'/'bid'/'default'/'my')
+# TYPE vastai_machine_used_gpu_count gauge
+vastai_machine_used_gpu_count{machine_id="2100",rental_type="bid"} 0
+vastai_machine_used_gpu_count{machine_id="2100",rental_type="default"} 0
+vastai_machine_used_gpu_count{machine_id="2100",rental_type="my"} 0
+vastai_machine_used_gpu_count{machine_id="2100",rental_type="ondemand"} 2
+vastai_machine_used_gpu_count{machine_id="3100",rental_type="bid"} 0
+vastai_machine_used_gpu_count{machine_id="3100",rental_type="default"} 0
+vastai_machine_used_gpu_count{machine_id="3100",rental_type="my"} 0
+vastai_machine_used_gpu_count{machine_id="3100",rental_type="ondemand"} 2
 
 
 ### Info on your instances (these include default jobs and jobs started by you)
