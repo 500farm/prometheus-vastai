@@ -65,22 +65,22 @@ func newVastAiAccountCollector() *VastAiAccountCollector {
 		ondemand_price_median_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_median_dollars",
-			Help:      "Median on-demand price among same-type GPUs (excluding yours)",
+			Help:      "Median on-demand price among same-type GPUs",
 		}, gpuStatsLabelNames),
 		ondemand_price_10th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_10th_percentile_dollars",
-			Help:      "10th percentile of on-demand prices among same-type GPUs (excluding yours)",
+			Help:      "10th percentile of on-demand prices among same-type GPUs",
 		}, gpuStatsLabelNames),
 		ondemand_price_90th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_90th_percentile_dollars",
-			Help:      "90th percentile of on-demand prices among same-type GPUs (excluding yours)",
+			Help:      "90th percentile of on-demand prices among same-type GPUs",
 		}, gpuStatsLabelNames),
 		gpu_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "gpu_count",
-			Help:      "Number of GPUs offered on site (excluding yours)",
+			Help:      "Number of GPUs offered on site",
 		}, gpuStatsLabelNames),
 
 		pending_payout_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
@@ -285,11 +285,7 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 	}
 
 	// process offers
-	groupedOffers := offerCache.machines.filter(
-		func(offer VastAiOffer) bool {
-			return !isMyMachineId[offer.MachineId]
-		},
-	).groupByGpu()
+	groupedOffers := offerCache.machines.groupByGpu()
 
 	updateMetrics := func(labels prometheus.Labels, stats OfferStats, needCount bool) {
 		if needCount {
