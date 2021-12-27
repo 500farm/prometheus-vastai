@@ -38,6 +38,7 @@ type VastAiMachine struct {
 	InetUp                        float64 `json:"inet_up"`
 	NumGpus                       int     `json:"num_gpus"`
 	GpuName                       string  `json:"gpu_name"`
+	TFlops                        float64 `json:"total_flops"`
 }
 
 type VastAiInstance struct {

@@ -4,7 +4,7 @@ For [Vast.ai](https://vast.ai) hosts.
 
 Prometheus exporter reporting data from your Vast.ai account:
 
-- Stats of your machines: reliability, inet speed, number of client jobs running, number of gpus used.
+- Stats of your machines: reliability, DLPerf score, inet speed, number of client jobs running, number of gpus used.
 - Stats of your own instances: on-demand and default.
 - Paid and pending balance of your account.
 - Your on-demand and bid prices. 
@@ -90,6 +90,16 @@ vastai_machine_is_verified{machine_id="3100"} 1
 # HELP vastai_machine_ondemand_price_per_gpu_dollars Machine on-demand price per GPU/hour
 vastai_machine_ondemand_price_per_gpu_dollars{machine_id="2100"} 0.7
 vastai_machine_ondemand_price_per_gpu_dollars{machine_id="3100"} 0.7
+
+# HELP vastai_machine_per_gpu_dlperf DLPerf score per GPU
+# TYPE vastai_machine_per_gpu_dlperf gauge
+vastai_machine_per_gpu_dlperf{machine_id="2100"} 16.80498575
+vastai_machine_per_gpu_dlperf{machine_id="3100"} 16.700071
+
+# HELP vastai_machine_per_gpu_tflops Performance in TFLOPS per GPU
+# TYPE vastai_machine_per_gpu_tflops gauge
+vastai_machine_per_gpu_tflops{machine_id="2100"} 22.0832
+vastai_machine_per_gpu_tflops{machine_id="3100"} 22.0832
 
 # HELP vastai_machine_reliability Reliability indicator (0.0-1.0)
 vastai_machine_reliability{machine_id="2100"} 0.9930448
