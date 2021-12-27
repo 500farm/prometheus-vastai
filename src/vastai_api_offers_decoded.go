@@ -23,8 +23,11 @@ type VastAiOffers []VastAiOffer
 type GroupedOffers map[string]VastAiOffers
 
 type OfferStats struct {
-	Count                                 int
-	Median, PercentileLow, PercentileHigh float64
+	Count             int
+	Median            float64
+	PercentileLow     float64
+	PercentileHigh    float64
+	CountByPriceRange map[int]int // price in cents, in $0.05 increments
 }
 
 type GpuInfo struct {
@@ -138,15 +141,20 @@ func (offers VastAiOffers) stats() OfferStats {
 	}
 
 	result := OfferStats{
-		Count:          len(prices),
-		Median:         math.NaN(),
-		PercentileLow:  math.NaN(),
-		PercentileHigh: math.NaN(),
+		Count:             len(prices),
+		Median:            math.NaN(),
+		PercentileLow:     math.NaN(),
+		PercentileHigh:    math.NaN(),
+		CountByPriceRange: make(map[int]int),
 	}
 	if len(prices) > 0 {
 		result.Median, _ = stats.Median(prices)
 		result.PercentileLow, _ = stats.Percentile(prices, 10)
 		result.PercentileHigh, _ = stats.Percentile(prices, 90)
+		for _, price := range prices {
+			r := int(math.Ceil(price/5) * 5)
+			result.CountByPriceRange[r]++
+		}
 	}
 	return result
 }
