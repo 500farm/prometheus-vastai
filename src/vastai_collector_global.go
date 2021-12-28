@@ -12,7 +12,7 @@ type VastAiGlobalCollector struct {
 	ondemand_price_10th_percentile_dollars *prometheus.GaugeVec
 	ondemand_price_90th_percentile_dollars *prometheus.GaugeVec
 	gpu_count                              *prometheus.GaugeVec
-	gpu_by_ondemand_price_range_count      *prometheus.GaugeVec
+	gpu_count_by_ondemand_price            *prometheus.GaugeVec
 	gpu_vram_gigabytes                     *prometheus.GaugeVec
 	gpu_teraflops                          *prometheus.GaugeVec
 	gpu_dlperf_score                       *prometheus.GaugeVec
@@ -46,9 +46,9 @@ func newVastAiGlobalCollector() *VastAiGlobalCollector {
 			Name:      "gpu_count",
 			Help:      "Number of GPUs offered on site",
 		}, labelNames),
-		gpu_by_ondemand_price_range_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		gpu_count_by_ondemand_price: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "gpu_by_ondemand_price_range_count",
+			Name:      "gpu_count_by_ondemand_price",
 			Help:      "Number of GPUs offered on site, grouped by price ranges",
 		}, labelNamesWithRange),
 
@@ -80,7 +80,7 @@ func (e *VastAiGlobalCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.ondemand_price_10th_percentile_dollars.Describe(ch)
 	e.ondemand_price_90th_percentile_dollars.Describe(ch)
 	e.gpu_count.Describe(ch)
-	e.gpu_by_ondemand_price_range_count.Describe(ch)
+	e.gpu_count_by_ondemand_price.Describe(ch)
 	e.gpu_vram_gigabytes.Describe(ch)
 	e.gpu_teraflops.Describe(ch)
 	e.gpu_dlperf_score.Describe(ch)
@@ -92,7 +92,7 @@ func (e *VastAiGlobalCollector) Collect(ch chan<- prometheus.Metric) {
 	e.ondemand_price_10th_percentile_dollars.Collect(ch)
 	e.ondemand_price_90th_percentile_dollars.Collect(ch)
 	e.gpu_count.Collect(ch)
-	e.gpu_by_ondemand_price_range_count.Collect(ch)
+	e.gpu_count_by_ondemand_price.Collect(ch)
 	e.gpu_vram_gigabytes.Collect(ch)
 	e.gpu_teraflops.Collect(ch)
 	e.gpu_dlperf_score.Collect(ch)
@@ -130,7 +130,7 @@ func (e *VastAiGlobalCollector) UpdateFrom(offerCache *OfferCache) {
 					maxUpper = upper
 				}
 			}
-			t := e.gpu_by_ondemand_price_range_count.MustCurryWith(labels)
+			t := e.gpu_count_by_ondemand_price.MustCurryWith(labels)
 			for upper := 5; upper < 200; upper += 5 {
 				labels := prometheus.Labels{"upper": fmt.Sprintf("%.2f", float64(upper)/100)}
 				c := stats.CountByPriceRange[upper]
