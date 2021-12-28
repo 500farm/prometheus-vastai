@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"math"
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -20,13 +19,10 @@ type VastAiAccountCollector struct {
 	knownInstances instanceInfoMap
 	lastPayouts    *PayoutInfo
 
-	ondemand_price_median_dollars          *prometheus.GaugeVec
-	ondemand_price_10th_percentile_dollars *prometheus.GaugeVec
-	ondemand_price_90th_percentile_dollars *prometheus.GaugeVec
-	gpu_count                              *prometheus.GaugeVec
-	pending_payout_dollars                 prometheus.Gauge
-	paid_out_dollars                       prometheus.Gauge
-	last_payout_time                       prometheus.Gauge
+	VastAiPriceStatsCollector
+	pending_payout_dollars prometheus.Gauge
+	paid_out_dollars       prometheus.Gauge
+	last_payout_time       prometheus.Gauge
 
 	machine_info                 *prometheus.GaugeVec
 	machine_is_verified          *prometheus.GaugeVec
@@ -56,32 +52,12 @@ func newVastAiAccountCollector() *VastAiAccountCollector {
 
 	instanceLabelNames := []string{"instance_id", "machine_id", "rental_type"}
 	instanceInfoLabelNamess := append(append([]string{}, instanceLabelNames...), "docker_image", "gpu_name")
-	gpuStatsLabelNames := []string{"gpu_name", "verified", "rented"}
 
 	return &VastAiAccountCollector{
 		knownInstances: make(instanceInfoMap),
 		lastPayouts:    readLastPayouts(),
 
-		ondemand_price_median_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "ondemand_price_median_dollars",
-			Help:      "Median on-demand price among same-type GPUs",
-		}, gpuStatsLabelNames),
-		ondemand_price_10th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "ondemand_price_10th_percentile_dollars",
-			Help:      "10th percentile of on-demand prices among same-type GPUs",
-		}, gpuStatsLabelNames),
-		ondemand_price_90th_percentile_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "ondemand_price_90th_percentile_dollars",
-			Help:      "90th percentile of on-demand prices among same-type GPUs",
-		}, gpuStatsLabelNames),
-		gpu_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "gpu_count",
-			Help:      "Number of GPUs offered on site",
-		}, gpuStatsLabelNames),
+		VastAiPriceStatsCollector: newVastAiPriceStatsCollector(),
 
 		pending_payout_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -202,10 +178,8 @@ func newVastAiAccountCollector() *VastAiAccountCollector {
 }
 
 func (e *VastAiAccountCollector) Describe(ch chan<- *prometheus.Desc) {
-	e.ondemand_price_median_dollars.Describe(ch)
-	e.ondemand_price_10th_percentile_dollars.Describe(ch)
-	e.ondemand_price_90th_percentile_dollars.Describe(ch)
-	e.gpu_count.Describe(ch)
+	e.VastAiPriceStatsCollector.Describe(ch)
+
 	ch <- e.pending_payout_dollars.Desc()
 	ch <- e.paid_out_dollars.Desc()
 	ch <- e.last_payout_time.Desc()
@@ -234,10 +208,8 @@ func (e *VastAiAccountCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (e *VastAiAccountCollector) Collect(ch chan<- prometheus.Metric) {
-	e.ondemand_price_median_dollars.Collect(ch)
-	e.ondemand_price_10th_percentile_dollars.Collect(ch)
-	e.ondemand_price_90th_percentile_dollars.Collect(ch)
-	e.gpu_count.Collect(ch)
+	e.VastAiPriceStatsCollector.Collect(ch)
+
 	ch <- e.pending_payout_dollars
 	ch <- e.paid_out_dollars
 	ch <- e.last_payout_time
@@ -285,38 +257,7 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 	}
 
 	// process offers
-	groupedOffers := offerCache.machines.groupByGpu()
-
-	updateMetrics := func(labels prometheus.Labels, stats OfferStats, needCount bool) {
-		if needCount {
-			e.gpu_count.With(labels).Set(float64(stats.Count))
-		}
-		if !math.IsNaN(stats.Median) {
-			e.ondemand_price_median_dollars.With(labels).Set(stats.Median / 100)
-		} else {
-			e.ondemand_price_median_dollars.Delete(labels)
-		}
-		if !math.IsNaN(stats.PercentileLow) && !math.IsNaN(stats.PercentileHigh) {
-			e.ondemand_price_10th_percentile_dollars.With(labels).Set(stats.PercentileLow / 100)
-			e.ondemand_price_90th_percentile_dollars.With(labels).Set(stats.PercentileHigh / 100)
-		} else {
-			e.ondemand_price_10th_percentile_dollars.Delete(labels)
-			e.ondemand_price_90th_percentile_dollars.Delete(labels)
-		}
-	}
-
-	for _, gpuName := range myGpus {
-		stats := groupedOffers[gpuName].stats3()
-		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "yes", "rented": "yes"}, stats.Rented.Verified, true)
-		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "no", "rented": "yes"}, stats.Rented.Unverified, true)
-		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "any", "rented": "yes"}, stats.Rented.All, false)
-		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "yes", "rented": "no"}, stats.Available.Verified, true)
-		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "no", "rented": "no"}, stats.Available.Unverified, true)
-		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "any", "rented": "no"}, stats.Available.All, false)
-		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "yes", "rented": "any"}, stats.All.Verified, false)
-		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "no", "rented": "any"}, stats.All.Unverified, false)
-		updateMetrics(prometheus.Labels{"gpu_name": gpuName, "verified": "any", "rented": "any"}, stats.All.All, false)
-	}
+	e.VastAiPriceStatsCollector.UpdateFrom(offerCache, myGpus)
 
 	// process machines
 	// TODO handle disappeared machines
