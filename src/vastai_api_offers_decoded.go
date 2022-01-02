@@ -131,12 +131,15 @@ func (offers VastAiOffers) filterAvailable() VastAiOffers {
 	)
 }
 
-func (offers VastAiOffers) stats() OfferStats {
+func (offers VastAiOffers) stats(perDlPerf bool) OfferStats {
 	prices := []float64{}
 	for _, offer := range offers {
-		pricePerGpu := offer.PricePerGpu
+		pricePerGpu := float64(offer.PricePerGpu)
+		if perDlPerf {
+			pricePerGpu = math.Floor(pricePerGpu * 100.0 / offer.DlperfPerGpu)
+		}
 		for i := 0; i < offer.NumGpus; i++ {
-			prices = append(prices, float64(pricePerGpu))
+			prices = append(prices, pricePerGpu)
 		}
 	}
 
@@ -191,19 +194,19 @@ func (offers VastAiOffers) gpuInfo() *GpuInfo {
 	}
 }
 
-func (offers VastAiOffers) stats2() OfferStats2 {
+func (offers VastAiOffers) stats2(perDlPerf bool) OfferStats2 {
 	return OfferStats2{
-		Verified:   offers.filterVerified().stats(),
-		Unverified: offers.filterUnverified().stats(),
-		All:        offers.stats(),
+		Verified:   offers.filterVerified().stats(perDlPerf),
+		Unverified: offers.filterUnverified().stats(perDlPerf),
+		All:        offers.stats(perDlPerf),
 	}
 }
 
-func (offers VastAiOffers) stats3() OfferStats3 {
+func (offers VastAiOffers) stats3(perDlPerf bool) OfferStats3 {
 	return OfferStats3{
-		Rented:    offers.filterRented().stats2(),
-		Available: offers.filterAvailable().stats2(),
-		All:       offers.stats2(),
+		Rented:    offers.filterRented().stats2(perDlPerf),
+		Available: offers.filterAvailable().stats2(perDlPerf),
+		All:       offers.stats2(perDlPerf),
 	}
 }
 

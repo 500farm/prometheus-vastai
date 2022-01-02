@@ -101,7 +101,7 @@ func (cache *OfferCache) gpuStatsJson() []byte {
 		}
 		result.Models = append(result.Models, GpuStatsModel{
 			Name:  gpuName,
-			Stats: offers.stats3(),
+			Stats: offers.stats3(false),
 			Info:  *info,
 		})
 	}
