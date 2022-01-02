@@ -358,7 +358,12 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 					// nor an owner's job is rented interruptible.
 					u.With(prometheus.Labels{"rental_type": "bid"}).
 						Set(float64(machine.NumGpus - defJobsUsedGpus - myJobsUsedGpus - numGpusRentedOndemand))
+				} else {
+					u.Delete(prometheus.Labels{"rental_type": "bid"})
 				}
+			} else {
+				u.Delete(prometheus.Labels{"rental_type": "ondemand"})
+				u.Delete(prometheus.Labels{"rental_type": "bid"})
 			}
 		}
 
