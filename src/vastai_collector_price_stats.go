@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -16,8 +15,7 @@ type VastAiPriceStatsCollector struct {
 	ondemand_price_per_100dlperf_p10_dollars    *prometheus.GaugeVec
 	ondemand_price_per_100dlperf_p90_dollars    *prometheus.GaugeVec
 
-	gpu_count                   *prometheus.GaugeVec
-	gpu_count_by_ondemand_price *prometheus.GaugeVec
+	gpu_count *prometheus.GaugeVec
 }
 
 func newVastAiPriceStatsCollector() VastAiPriceStatsCollector {
@@ -65,11 +63,6 @@ func newVastAiPriceStatsCollector() VastAiPriceStatsCollector {
 			Name:      "gpu_count",
 			Help:      "Number of GPUs offered on site",
 		}, labelNamesWithGpu),
-		gpu_count_by_ondemand_price: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "gpu_count_by_ondemand_price",
-			Help:      "Number of GPUs offered on site, grouped by price ranges",
-		}, labelNamesWithGpuAndRange),
 	}
 }
 
@@ -83,7 +76,6 @@ func (e *VastAiPriceStatsCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.ondemand_price_per_100dlperf_p90_dollars.Describe(ch)
 
 	e.gpu_count.Describe(ch)
-	e.gpu_count_by_ondemand_price.Describe(ch)
 }
 
 func (e *VastAiPriceStatsCollector) Collect(ch chan<- prometheus.Metric) {
@@ -96,7 +88,6 @@ func (e *VastAiPriceStatsCollector) Collect(ch chan<- prometheus.Metric) {
 	e.ondemand_price_per_100dlperf_p90_dollars.Collect(ch)
 
 	e.gpu_count.Collect(ch)
-	e.gpu_count_by_ondemand_price.Collect(ch)
 }
 
 func (e *VastAiPriceStatsCollector) UpdateFrom(offerCache *OfferCache, gpuNames []string) {
@@ -117,29 +108,6 @@ func (e *VastAiPriceStatsCollector) UpdateFrom(offerCache *OfferCache, gpuNames 
 		} else {
 			e.ondemand_price_p10_dollars.Delete(labels)
 			e.ondemand_price_p90_dollars.Delete(labels)
-		}
-		// gpu counts by price ranges
-		if needCount {
-			minUpper := 1000000
-			maxUpper := 0
-			for upper := range stats.CountByPriceRange {
-				if upper < minUpper {
-					minUpper = upper
-				}
-				if upper > maxUpper {
-					maxUpper = upper
-				}
-			}
-			t := e.gpu_count_by_ondemand_price.MustCurryWith(labels)
-			for upper := 5; upper < 200; upper += 5 {
-				labels := prometheus.Labels{"upper": fmt.Sprintf("%.2f", float64(upper)/100)}
-				c := stats.CountByPriceRange[upper]
-				if upper >= minUpper && upper <= maxUpper {
-					t.With(labels).Set(float64(c))
-				} else {
-					t.Delete(labels)
-				}
-			}
 		}
 	}
 
