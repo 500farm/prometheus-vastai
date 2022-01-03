@@ -23,7 +23,6 @@ func newVastAiPriceStatsCollector() VastAiPriceStatsCollector {
 
 	labelNames := []string{"verified", "rented"}
 	labelNamesWithGpu := []string{"gpu_name", "verified", "rented"}
-	labelNamesWithGpuAndRange := []string{"gpu_name", "verified", "rented", "upper"}
 
 	return VastAiPriceStatsCollector{
 		ondemand_price_median_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
