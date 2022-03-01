@@ -32,7 +32,7 @@ var HashRates HashRateMap = HashRateMap{ // MH/s
 	"RTX 3080 Ti": 84,
 	"RTX 3090":    106,
 	// "RTX A2000": ,
-	// "RTX A4000": ,
+	"RTX A4000": 51,
 	"RTX A5000": 87,
 	"RTX A6000": 87,
 	// "Tesla K80": ,
