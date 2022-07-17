@@ -1,5 +1,7 @@
 # vastai_exporter
 
+![Docker Image CI](https://github.com/500farm/prometheus-vastai/actions/workflows/docker-image.yml/badge.svg)
+
 For [Vast.ai](https://vast.ai) hosts.
 
 Prometheus exporter reporting data from your Vast.ai account:
