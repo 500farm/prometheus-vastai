@@ -356,8 +356,11 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 					// Can not directly determine number of gpus used by bid jobs.
 					// However, if there is a default job on every gpu, we can assume that a gpu not used neither by an ondemand job, a default job,
 					// nor an owner's job is rented interruptible.
-					u.With(prometheus.Labels{"rental_type": "bid"}).
-						Set(float64(machine.NumGpus - defJobsUsedGpus - myJobsUsedGpus - numGpusRentedOndemand))
+					numGpusBid := machine.NumGpus - defJobsUsedGpus - myJobsUsedGpus - numGpusRentedOndemand
+					if numGpusBid < 0 {
+						numGpusBid = 0
+					}
+					u.With(prometheus.Labels{"rental_type": "bid"}).Set(float64(numGpusBid))
 				} else {
 					u.Delete(prometheus.Labels{"rental_type": "bid"})
 				}
