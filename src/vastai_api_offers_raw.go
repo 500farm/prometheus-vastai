@@ -86,6 +86,10 @@ func mergeRawOffers(verified VastAiRawOffers, unverified VastAiRawOffers) VastAi
 		delete(offer, "dph_total")
 		delete(offer, "rented")
 		delete(offer, "is_bid")
+		// fix whitespace in public_ipaddr
+		if ip, ok := offer["public_ipaddr"].(string); ok {
+			offer["public_ipaddr"] = strings.TrimSpace(ip)
+		}
 	}
 	return result
 }
