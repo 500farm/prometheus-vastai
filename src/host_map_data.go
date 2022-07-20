@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"math"
 
 	"github.com/prometheus/common/log"
 )
@@ -27,6 +28,7 @@ type HostMapItem struct {
 	MachineIds  string       `json:"machine_ids"`
 	IpAddresses string       `json:"ip_addresses"`
 	Tflops      float64      `json:"tflops"`
+	TflopsSqrt	float64		 `json:"tflops_sqrt"`
 	Location    *MapLocation `json:"location"`
 }
 
@@ -69,6 +71,7 @@ func (host *Host) mapItem() *HostMapItem {
 		IpAddresses: strings.Join(host.IpAddresses, ", "),
 		Tflops:      host.Tflops,
 		Location:    &loc,
+		TflopsSqrt:	 math.Sqrt(host.Tflops),
 	}
 	return &r
 }
