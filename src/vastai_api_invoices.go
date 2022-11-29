@@ -39,7 +39,9 @@ func getPayouts() (*PayoutInfo, error) {
 			amount, _ := strconv.ParseFloat(invoice.Amount, 64)
 			if amount > 0 {
 				paidOut += int64(amount * 100)
-				lastPayoutTime = invoice.Ts
+				if invoice.Ts > lastPayoutTime {
+					lastPayoutTime = invoice.Ts
+				}
 			}
 		}
 	}
