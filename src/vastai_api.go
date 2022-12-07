@@ -34,6 +34,7 @@ type VastAiMachine struct {
 	CurrentRentalsResident        int     `json:"current_rentals_resident"`
 	CurrentRentalsRunning         int     `json:"current_rentals_running"`
 	CurrentRentalsRunningOnDemand int     `json:"current_rentals_running_on_demand"`
+	GpuOccupancy                  string  `json:"gpu_occupancy"`
 	InetDown                      float64 `json:"inet_down"`
 	InetUp                        float64 `json:"inet_up"`
 	NumGpus                       int     `json:"num_gpus"`

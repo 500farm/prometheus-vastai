@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
@@ -297,12 +298,10 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 		t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "running"}).Set(float64(countBidRunning))
 		t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "stopped"}).Set(float64(countBidStopped))
 
-		// get number of gpus rented on-demand from offer list, also get dlperf
-		numGpusRentedOndemand := -1
+		// get dlperf from offer list
 		dlPerf := 0.0
 		for _, offer := range offerCache.machines {
 			if offer.MachineId == machine.Id {
-				numGpusRentedOndemand = offer.NumGpusRented
 				dlPerf = offer.DlperfPerGpu
 				break
 			}
@@ -346,28 +345,14 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 			t.With(prometheus.Labels{"rental_type": "my", "rental_status": "running"}).Set(float64(myJobsRunning))
 			t.With(prometheus.Labels{"rental_type": "my", "rental_status": "stopped"}).Set(float64(myJobsStopped))
 
-			// count gpus used by various kind of jobs
+			numGpusOnDemand := strings.Count(machine.GpuOccupancy, "D")
+			numGpusBid := strings.Count(machine.GpuOccupancy, "I")
+
 			u := e.machine_used_gpu_count.MustCurryWith(labels)
 			u.With(prometheus.Labels{"rental_type": "default"}).Set(float64(defJobsUsedGpus))
 			u.With(prometheus.Labels{"rental_type": "my"}).Set(float64(myJobsUsedGpus))
-			if numGpusRentedOndemand >= 0 {
-				u.With(prometheus.Labels{"rental_type": "ondemand"}).Set(float64(numGpusRentedOndemand))
-				if defJobsRunning+defJobsStopped == machine.NumGpus {
-					// Can not directly determine number of gpus used by bid jobs.
-					// However, if there is a default job on every gpu, we can assume that a gpu not used neither by an ondemand job, a default job,
-					// nor an owner's job is rented interruptible.
-					numGpusBid := machine.NumGpus - defJobsUsedGpus - myJobsUsedGpus - numGpusRentedOndemand
-					if numGpusBid < 0 {
-						numGpusBid = 0
-					}
-					u.With(prometheus.Labels{"rental_type": "bid"}).Set(float64(numGpusBid))
-				} else {
-					u.Delete(prometheus.Labels{"rental_type": "bid"})
-				}
-			} else {
-				u.Delete(prometheus.Labels{"rental_type": "ondemand"})
-				u.Delete(prometheus.Labels{"rental_type": "bid"})
-			}
+			u.With(prometheus.Labels{"rental_type": "bid"}).Set(float64(numGpusBid))
+			u.With(prometheus.Labels{"rental_type": "ondemand"}).Set(float64(numGpusOnDemand))
 		}
 
 	}
