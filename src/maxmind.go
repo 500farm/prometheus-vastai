@@ -145,7 +145,7 @@ func (cache *GeoCache) queryMaxMind(ip string) (*GeoLocation, error) {
 		log.Warnln("Invalid IP address:", ip)
 		return nil, nil
 	}
-	if !parsedIp.IsGlobalUnicast() {
+	if !parsedIp.IsGlobalUnicast() || parsedIp.IsPrivate() {
 		log.Warnln("IP address from an invalid range:", ip)
 		return nil, nil
 	}
