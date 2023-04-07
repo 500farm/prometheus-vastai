@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -139,6 +140,16 @@ func (cache *GeoCache) save() {
 }
 
 func (cache *GeoCache) queryMaxMind(ip string) (*GeoLocation, error) {
+	parsedIp := net.ParseIP(ip)
+	if parsedIp == nil {
+		log.Warnln("Invalid IP address:", ip)
+		return nil, nil
+	}
+	if !parsedIp.IsGlobalUnicast() {
+		log.Warnln("IP address from an invalid range:", ip)
+		return nil, nil
+	}
+
 	client := &http.Client{Timeout: 5 * time.Second}
 	url := fmt.Sprintf("https://geoip.maxmind.com/geoip/v2.1/city/%s?pretty", ip)
 	req, err := http.NewRequest("GET", url, nil)
