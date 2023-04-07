@@ -55,6 +55,9 @@ Errors/warnings are printed to stderr and can be viewed with `docker logs`.
 
 --maxmind-key=USERID:KEY
     Use MaxMind GeoIP web services. Specify your Account ID and License Key separated with ":".
+
+--no-geolocation=IP[/NN],IP[/NN],...
+    Exculde IP ranges from geolocation.
 ```
 
 ### Example output

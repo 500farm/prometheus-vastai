@@ -37,6 +37,10 @@ var (
 		"maxmind-key",
 		"API key for MaxMind GeoIP web services.",
 	).PlaceHolder("USERID:KEY").String()
+	noGeoLocation = kingpin.Flag(
+		"no-geolocation",
+		"Exculde IP ranges from geolocation",
+	).PlaceHolder("IP[/NN],IP[/NN],...").String()
 )
 
 func metricsHandler(w http.ResponseWriter, r *http.Request, collector prometheus.Collector) {

@@ -37,6 +37,7 @@ type GeoCache struct {
 	maxMindUser string
 	maxMindPass string
 	failed      bool
+	skipNets    []net.IPNet
 }
 
 type MaxMindResponse struct {
@@ -105,6 +106,22 @@ func loadGeoCache() (*GeoCache, error) {
 
 	cache.removeExpired()
 	log.Infof("Loaded geolocation cache: %d items", len(cache.Entries))
+
+	if *noGeoLocation != "" {
+		for _, netStr := range strings.Split(*noGeoLocation, ",") {
+			netStr = strings.TrimSpace(netStr)
+			if len(netStr) > 0 {
+				_, net, err := net.ParseCIDR(netStr)
+				if err != nil {
+					log.Errorln(err)
+				} else {
+					cache.skipNets = append(cache.skipNets, *net)
+				}
+			}
+		}
+		log.Infof("Will skip geolocation for: %v", cache.skipNets)
+	}
+
 	return cache, nil
 }
 
@@ -148,6 +165,12 @@ func (cache *GeoCache) queryMaxMind(ip string) (*GeoLocation, error) {
 	if !parsedIp.IsGlobalUnicast() || parsedIp.IsPrivate() {
 		log.Warnln("IP address from an invalid range:", ip)
 		return nil, nil
+	}
+	for _, net := range cache.skipNets {
+		if net.Contains(parsedIp) {
+			log.Warnln("Skipped geolocation for IP:", ip)
+			return nil, nil
+		}
 	}
 
 	client := &http.Client{Timeout: 5 * time.Second}
