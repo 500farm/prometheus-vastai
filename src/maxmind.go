@@ -126,6 +126,22 @@ func loadGeoCache() (*GeoCache, error) {
 }
 
 func (cache *GeoCache) ipLocation(ip string) *GeoLocation {
+	parsedIp := net.ParseIP(ip)
+	if parsedIp == nil {
+		log.Warnln("Invalid IP address:", ip)
+		return nil
+	}
+	if !parsedIp.IsGlobalUnicast() || parsedIp.IsPrivate() {
+		log.Warnln("IP address from an invalid range:", ip)
+		return nil
+	}
+	for _, net := range cache.skipNets {
+		if net.Contains(parsedIp) {
+			log.Infoln("Skipped geolocation for IP:", ip)
+			return nil
+		}
+	}
+
 	entry, found := cache.Entries[ip]
 	if found && !entry.expired() {
 		return entry.Location
@@ -157,22 +173,6 @@ func (cache *GeoCache) save() {
 }
 
 func (cache *GeoCache) queryMaxMind(ip string) (*GeoLocation, error) {
-	parsedIp := net.ParseIP(ip)
-	if parsedIp == nil {
-		log.Warnln("Invalid IP address:", ip)
-		return nil, nil
-	}
-	if !parsedIp.IsGlobalUnicast() || parsedIp.IsPrivate() {
-		log.Warnln("IP address from an invalid range:", ip)
-		return nil, nil
-	}
-	for _, net := range cache.skipNets {
-		if net.Contains(parsedIp) {
-			log.Warnln("Skipped geolocation for IP:", ip)
-			return nil, nil
-		}
-	}
-
 	client := &http.Client{Timeout: 5 * time.Second}
 	url := fmt.Sprintf("https://geoip.maxmind.com/geoip/v2.1/city/%s?pretty", ip)
 	req, err := http.NewRequest("GET", url, nil)
