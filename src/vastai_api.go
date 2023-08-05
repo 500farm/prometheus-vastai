@@ -57,7 +57,7 @@ type VastAiInstance struct {
 }
 
 const defaultTimeout = 30 * time.Second
-const bundleTimeout = 30 * time.Second
+const bundleTimeout = 120 * time.Second
 const queryInterval = 5 * time.Second
 
 func getVastAiInfo(masterUrl string) VastAiApiResults {
