@@ -152,7 +152,7 @@ func (offers VastAiRawOffers) groupByMachineId() map[int]VastAiRawOffers {
 	return grouped
 }
 
-func (offers VastAiRawOffers) filterWholeMachines(prevResult VastAiRawOffers) VastAiRawOffers {
+func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) VastAiRawOffers {
 	result := make(VastAiRawOffers, 0, len(prevResult))
 
 	for machineId, offers := range offers.groupByMachineId() {
