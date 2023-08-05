@@ -136,15 +136,17 @@ func (offers VastAiRawOffers) groupByMachineId() map[int]VastAiRawOffers {
 }
 
 type Chunk struct {
-	size    int
-	frac    float64
-	offer   VastAiRawOffer
-	offerId int
+	size     int
+	frac     float64
+	offer    VastAiRawOffer
+	offerId  int
+	rentable bool
 }
 
 type Chunk2 struct {
-	Size    int `json:"size"`
-	OfferId int `json:"offerId"`
+	Size     int  `json:"size"`
+	OfferId  int  `json:"offerId"`
+	Rentable bool `json:"rentable"`
 }
 
 func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) VastAiRawOffers {
@@ -157,10 +159,11 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 		chunks := make([]Chunk, 0, len(offers))
 		for _, offer := range offers {
 			chunks = append(chunks, Chunk{
-				offer:   offer,
-				offerId: offer.id(),
-				size:    offer.numGpus(),
-				frac:    offer.gpuFrac(),
+				offer:    offer,
+				offerId:  offer.id(),
+				size:     offer.numGpus(),
+				frac:     offer.gpuFrac(),
+				rentable: offer.rentable(),
 			})
 		}
 		sort.Slice(chunks, func(i, j int) bool {
@@ -230,8 +233,9 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 		chunks2 := make([]Chunk2, 0, len(offers))
 		for _, chunk := range chunks {
 			chunks2 = append(chunks2, Chunk2{
-				OfferId: chunk.offerId,
-				Size:    chunk.size,
+				OfferId:  chunk.offerId,
+				Size:     chunk.size,
+				Rentable: chunk.rentable,
 			})
 		}
 		newOffer := VastAiRawOffer{
