@@ -30,7 +30,7 @@ type HostMapItem struct {
 	Tflops      float64      `json:"tflops"`
 	TflopsSqrt  float64      `json:"tflops_sqrt"`
 	Location    *MapLocation `json:"location"`
-	Connection  string       `json:"connection,omitempty"`
+	Connection  string       `json:"connection"`
 }
 
 type HostMapItems []HostMapItem
