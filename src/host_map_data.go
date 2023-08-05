@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
-	"math"
 
 	"github.com/prometheus/common/log"
 )
@@ -28,8 +28,9 @@ type HostMapItem struct {
 	MachineIds  string       `json:"machine_ids"`
 	IpAddresses string       `json:"ip_addresses"`
 	Tflops      float64      `json:"tflops"`
-	TflopsSqrt	float64		 `json:"tflops_sqrt"`
+	TflopsSqrt  float64      `json:"tflops_sqrt"`
 	Location    *MapLocation `json:"location"`
+	Connection  string       `json:"connection,omitempty"`
 }
 
 type HostMapItems []HostMapItem
@@ -64,6 +65,10 @@ func (host *Host) mapItem() *HostMapItem {
 		return nil
 	}
 	loc := MapLocation(*host.Location)
+	connection := ""
+	if host.InetDown > 0 && host.InetUp > 0 {
+		connection = fmt.Sprintf("↓ %.0f ↑ %.0f Mb/s", host.InetDown, host.InetUp)
+	}
 	r := HostMapItem{
 		Gpus:        host.Gpus.String(),
 		HostId:      strconv.Itoa(host.HostId),
@@ -71,7 +76,8 @@ func (host *Host) mapItem() *HostMapItem {
 		IpAddresses: strings.Join(host.IpAddresses, ", "),
 		Tflops:      host.Tflops,
 		Location:    &loc,
-		TflopsSqrt:	 math.Sqrt(host.Tflops),
+		TflopsSqrt:  math.Sqrt(host.Tflops),
+		Connection:  connection,
 	}
 	return &r
 }

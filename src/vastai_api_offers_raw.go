@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/url"
 	"sort"
@@ -252,6 +253,21 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 					newOffer["location"] = location
 				}
 			}
+		}
+
+		// - calculate inet_up/down
+		maxUp := 0.0
+		maxDown := 0.0
+		for _, offer := range offers {
+			maxUp = math.Max(maxUp, offer["inet_up"].(float64))
+			maxDown = math.Max(maxDown, offer["inet_down"].(float64))
+		}
+		if maxUp > 0 && maxDown > 0 {
+			newOffer["inet_up"] = maxUp
+			newOffer["inet_down"] = maxDown
+		} else {
+			newOffer["inet_up"] = nil
+			newOffer["inet_down"] = nil
 		}
 
 		result = append(result, newOffer)

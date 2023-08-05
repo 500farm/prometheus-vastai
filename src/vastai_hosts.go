@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 	"time"
@@ -20,6 +21,8 @@ type Host struct {
 	Gpus        GpuCounts    `json:"gpus"`
 	Tflops      float64      `json:"tflops"`
 	Location    *GeoLocation `json:"location,omitempty"`
+	InetUp      float64      `json:"inet_up,omitempty"`
+	InetDown    float64      `json:"inet_down,omitempty"`
 }
 
 type Hosts []Host
@@ -59,6 +62,8 @@ func (offers VastAiRawOffers) getHosts() Hosts {
 		hostId, _ := offer["host_id"].(float64)
 		ipAddr, _ := offer["public_ipaddr"].(string)
 		tflops, _ := offer["total_flops"].(float64)
+		inetUp, _ := offer["inet_up"].(float64)
+		inetDown, _ := offer["inet_down"].(float64)
 
 		item := Host{
 			HostId:      int(hostId),
@@ -66,6 +71,8 @@ func (offers VastAiRawOffers) getHosts() Hosts {
 			IpAddresses: []string{ipAddr},
 			Gpus:        gpus,
 			Tflops:      tflops,
+			InetUp:      inetUp,
+			InetDown:    inetDown,
 		}
 
 		location, ok := offer["location"].(*GeoLocation)
@@ -117,5 +124,7 @@ func (item1 Host) merge(item2 Host) Host {
 		Gpus:        gpus,
 		Tflops:      item1.Tflops + item2.Tflops,
 		Location:    item2.Location,
+		InetUp:      math.Max(item1.InetUp, item2.InetUp),
+		InetDown:    math.Max(item1.InetDown, item2.InetDown),
 	}
 }
