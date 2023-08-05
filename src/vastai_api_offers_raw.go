@@ -45,36 +45,16 @@ func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 }
 
 func getRawOffersFromApi(result *VastAiApiResults) error {
-	var verified, unverified struct {
+	var t struct {
 		Offers VastAiRawOffers `json:"offers"`
 	}
 	result.ts = time.Now()
-	if err := vastApiCall(&verified, "bundles", url.Values{
-		"q": {`{"external":{"eq":"false"},"verified":{"eq":"true"},"type":"on-demand","disable_bundling":true}`},
+	if err := vastApiCall(&t, "bundles", url.Values{
+		"q": {`{"external":{"eq":"false"},"type":"on-demand","disable_bundling":true}`},
 	}, bundleTimeout); err != nil {
 		return err
 	}
-	if err := vastApiCall(&unverified, "bundles", url.Values{
-		"q": {`{"external":{"eq":"false"},"verified":{"eq":"false"},"type":"on-demand","disable_bundling":true}`},
-	}, bundleTimeout); err != nil {
-		return err
-	}
-	offers := mergeRawOffers(verified.Offers, unverified.Offers)
-	result.offers = &offers
-	return nil
-}
-
-func mergeRawOffers(verified VastAiRawOffers, unverified VastAiRawOffers) VastAiRawOffers {
-	result := make(VastAiRawOffers, 0, len(verified)+len(unverified))
-	for _, offer := range verified {
-		offer["verified"] = true
-		result = append(result, offer)
-	}
-	for _, offer := range unverified {
-		offer["verified"] = false
-		result = append(result, offer)
-	}
-	for _, offer := range result {
+	for _, offer := range t.Offers {
 		// remove useless fields
 		delete(offer, "external")
 		delete(offer, "webpage")
@@ -90,8 +70,10 @@ func mergeRawOffers(verified VastAiRawOffers, unverified VastAiRawOffers) VastAi
 		if ip, ok := offer["public_ipaddr"].(string); ok {
 			offer["public_ipaddr"] = strings.TrimSpace(ip)
 		}
+		offer["verified"] = offer["verification"] == "verified"
 	}
-	return result
+	result.offers = &t.Offers
+	return nil
 }
 
 func (offers VastAiRawOffers) filter(filter func(VastAiRawOffer) bool) VastAiRawOffers {
@@ -152,6 +134,18 @@ func (offers VastAiRawOffers) groupByMachineId() map[int]VastAiRawOffers {
 	return grouped
 }
 
+type Chunk struct {
+	size    int
+	frac    float64
+	offer   VastAiRawOffer
+	offerId int
+}
+
+type Chunk2 struct {
+	Size    int `json:"size"`
+	OfferId int `json:"offerId"`
+}
+
 func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) VastAiRawOffers {
 	result := make(VastAiRawOffers, 0, len(prevResult))
 
@@ -159,28 +153,40 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 		// for each machine:
 
 		// - collect array of chunks from smallest to largest
-		chunks := make([]int, 0, len(offers))
+		chunks := make([]Chunk, 0, len(offers))
 		for _, offer := range offers {
-			chunks = append(chunks, offer.numGpus())
+			chunks = append(chunks, Chunk{
+				offer:   offer,
+				offerId: offer.id(),
+				size:    offer.numGpus(),
+				frac:    offer.gpuFrac(),
+			})
 		}
-		sort.Ints(chunks)
+		sort.Slice(chunks, func(i, j int) bool {
+			return chunks[i].size < chunks[j].size
+		})
 
 		// - create map: chunk size => number of chunks of this size
+		// - find offer corresponding to the whole machine
 		countBySize := make(map[int]int)
-		for _, size := range chunks {
-			countBySize[size]++
+		var wholeMachine *Chunk
+		for _, chunk := range chunks {
+			countBySize[chunk.size]++
+			if chunk.frac == 1.0 {
+				wholeMachine = &chunk
+			}
 		}
-
-		// - find out smallest and largest chunk size
-		minChunkSize := chunks[0]
-		wholeMachineSize := chunks[len(chunks)-1]
 
 		// - correction for the case where whole machine size is not a multiple of min_chunk
 		// - in this case, there is always a single remainder chunk which is smaller than actual min_chunk
 		//   examples: [1 2 2 2 3 4 7] [1 2 3], actual min_chunk is 2
 		//             [3 4 7], actual min_chunk is 4
+		// TODO currently unhandled:
+		//             [1 3 3 3 4 7], actual min_chunk is 3
+		//             [2 4 6 8 10], ???
+		minChunkSize := chunks[0].size
 		if countBySize[minChunkSize] == 1 && len(chunks) >= 3 {
-			minChunkSize = chunks[1]
+			minChunkSize = chunks[1].size
 		}
 
 		// - iterate over non-dividable chunks and sum up GPU counts
@@ -197,9 +203,16 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 		}
 
 		// - validate: there must be exactly one whole machine offer, and non-dividable chunks must sum up to the machine size
-		if countBySize[wholeMachineSize] != 1 || wholeMachineSize != totalGpus {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has invalid chunk split %v",
-				machineId, chunks))
+		if wholeMachine == nil || wholeMachine.size != totalGpus || countBySize[wholeMachine.size] != 1 {
+			chunkSizes := make([]int, 0, len(offers))
+			offerIds := make([]int, 0, len(offers))
+			for _, chunk := range chunks {
+				offerIds = append(offerIds, chunk.offerId)
+				chunkSizes = append(chunkSizes, chunk.size)
+			}
+
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has invalid chunk split %v, offer_ids %v",
+				machineId, chunkSizes, offerIds))
 
 			// preserve existing record for this machine (if exists)
 			for _, prevOffer := range prevResult {
@@ -212,21 +225,20 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 			continue
 		}
 
-		// - find whole machine offer (with size=wholeMachineSize)
-		var wholeOffer VastAiRawOffer
-		for _, offer := range offers {
-			if offer.numGpus() == wholeMachineSize {
-				wholeOffer = offer
-				break
-			}
-		}
-
 		// - produce modified offer record with added num_gpus_rented and removed gpu_frac etc
+		chunks2 := make([]Chunk2, 0, len(offers))
+		for _, chunk := range chunks {
+			chunks2 = append(chunks2, Chunk2{
+				OfferId: chunk.offerId,
+				Size:    chunk.size,
+			})
+		}
 		newOffer := VastAiRawOffer{
 			"num_gpus_rented": usedGpus,
 			"min_chunk":       minChunkSize,
+			"chunks":          chunks2,
 		}
-		for k, v := range wholeOffer {
+		for k, v := range wholeMachine.offer {
 			if k != "gpu_frac" && k != "rentable" && k != "bundle_id" && k != "cpu_cores_effective" && k != "hostname" && k != "id" {
 				newOffer[k] = v
 			}
@@ -234,7 +246,7 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 
 		// - add geolocation
 		if geoCache != nil {
-			ip, _ := wholeOffer["public_ipaddr"].(string)
+			ip, _ := wholeMachine.offer["public_ipaddr"].(string)
 			if ip != "" {
 				if location := geoCache.ipLocation(ip); location != nil {
 					newOffer["location"] = location
@@ -256,12 +268,20 @@ func (offer VastAiRawOffer) numGpus() int {
 	return int(offer["num_gpus"].(float64))
 }
 
+func (offer VastAiRawOffer) gpuFrac() float64 {
+	return offer["gpu_frac"].(float64)
+}
+
 func (offer VastAiRawOffer) numGpusRented() int {
 	return offer["num_gpus_rented"].(int)
 }
 
 func (offer VastAiRawOffer) pricePerGpu() int { // in cents
 	return int(offer["dph_base"].(float64) / offer["num_gpus"].(float64) * 100)
+}
+
+func (offer VastAiRawOffer) id() int {
+	return int(offer["id"].(float64))
 }
 
 func (offer VastAiRawOffer) machineId() int {
