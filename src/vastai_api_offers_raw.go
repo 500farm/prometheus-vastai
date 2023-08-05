@@ -167,7 +167,7 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 			})
 		}
 		sort.Slice(chunks, func(i, j int) bool {
-			return chunks[i].size < chunks[j].size
+			return chunks[i].size*1e12+chunks[i].offerId < chunks[j].size*1e12+chunks[j].offerId
 		})
 
 		// - create map: chunk size => number of chunks of this size
