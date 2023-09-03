@@ -141,6 +141,7 @@ type Chunk struct {
 	offer    VastAiRawOffer
 	offerId  int
 	rentable bool
+	dlperf   float64
 }
 
 type Chunk2 struct {
@@ -164,6 +165,7 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 				size:     offer.numGpus(),
 				frac:     offer.gpuFrac(),
 				rentable: offer.rentable(),
+				dlperf:   offer.dlperf(),
 			})
 		}
 		sort.Slice(chunks, func(i, j int) bool {
@@ -274,6 +276,19 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 			newOffer["inet_down"] = nil
 		}
 
+		// - find out avg dlperf among minimal chunks
+		dlperfPerGpuSum := 0.0
+		dlperfPerGpuCount := 0.0
+		for _, chunk := range chunks {
+			if chunk.size <= minChunkSize {
+				dlperfPerGpuSum += chunk.dlperf
+				dlperfPerGpuCount += float64(chunk.size)
+			}
+		}
+		dlperfPerGpu := dlperfPerGpuSum / dlperfPerGpuCount
+		newOffer["dlperf"] = dlperfPerGpu * float64(totalGpus)
+		newOffer["dlperf_per_dphtotal"] = dlperfPerGpu / float64(wholeMachine.offer.pricePerGpu()) * 100
+
 		result = append(result, newOffer)
 	}
 
@@ -318,4 +333,8 @@ func (offer VastAiRawOffer) verified() bool {
 
 func (offer VastAiRawOffer) rentable() bool {
 	return offer["rentable"].(bool)
+}
+
+func (offer VastAiRawOffer) dlperf() float64 {
+	return offer["dlperf"].(float64)
 }
