@@ -287,7 +287,10 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 		}
 		dlperfPerGpu := dlperfPerGpuSum / dlperfPerGpuCount
 		newOffer["dlperf"] = dlperfPerGpu * float64(totalGpus)
-		newOffer["dlperf_per_dphtotal"] = dlperfPerGpu / float64(wholeMachine.offer.pricePerGpu()) * 100
+		v := dlperfPerGpu / float64(wholeMachine.offer.pricePerGpu()) * 100
+		if v != math.Inf(+1) {
+			newOffer["dlperf_per_dphtotal"] = v
+		}
 
 		result = append(result, newOffer)
 	}
