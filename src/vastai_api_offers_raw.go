@@ -123,6 +123,11 @@ func (offers VastAiRawOffers) validate() VastAiRawOffers {
 		}
 	}
 
+	// ensure there is no NaN/Inf in the result
+	for _, offer := range result {
+		offer.fixFloats()
+	}
+
 	return result
 }
 
@@ -292,6 +297,9 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 			newOffer["dlperf_per_dphtotal"] = v
 		}
 
+		// - ensure there is no NaN/Inf in the result
+		newOffer.fixFloats()
+
 		result = append(result, newOffer)
 	}
 
@@ -340,4 +348,17 @@ func (offer VastAiRawOffer) rentable() bool {
 
 func (offer VastAiRawOffer) dlperf() float64 {
 	return offer["dlperf"].(float64)
+}
+
+func (offer VastAiRawOffer) fixFloats() {
+	for k, v := range offer {
+		switch fv := v.(type) {
+		case float64:
+			if math.IsInf(fv, 0) || math.IsNaN(fv) {
+				log.Warnln(fmt.Sprintf("Inf or NaN found with key '%s' in %v", k, offer))
+				delete(offer, k)
+			}
+		}
+	}
+
 }
