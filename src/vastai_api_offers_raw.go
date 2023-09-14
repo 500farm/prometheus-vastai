@@ -111,11 +111,6 @@ func (offers VastAiRawOffers) validate() VastAiRawOffers {
 		return false
 	})
 
-	// ensure there is no NaN/Inf in the result
-	for _, offer := range result {
-		offer.fixFloats()
-	}
-
 	return result
 }
 
@@ -344,9 +339,8 @@ func (offer VastAiRawOffer) fixFloats() {
 		case float64:
 			if math.IsInf(fv, 0) || math.IsNaN(fv) {
 				log.Warnln(fmt.Sprintf("Inf or NaN found with key '%s' in %v", k, offer))
-				delete(offer, k)
+				offer[k] = nil
 			}
 		}
 	}
-
 }
