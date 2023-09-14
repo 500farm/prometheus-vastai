@@ -103,25 +103,13 @@ func (offers VastAiRawOffers) validate() VastAiRawOffers {
 		_, ok3 := offer["num_gpus"].(float64)
 		_, ok4 := offer["dph_base"].(float64)
 		_, ok5 := offer["rentable"].(bool)
-		if ok1 && ok2 && ok3 && ok4 && ok5 {
+		_, ok6 := offer["gpu_frac"].(float64)
+		if ok1 && ok2 && ok3 && ok4 && ok5 && ok6 {
 			return true
 		}
 		log.Warnln(fmt.Sprintf("Offer is missing required fields: %v", offer))
 		return false
 	})
-
-	// also log offers with gpu_frac=null (this happens for whatever reason)
-	for machineId, offers := range offers.groupByMachineId() {
-		bad := false
-		for _, offer := range offers {
-			if _, ok := offer["gpu_frac"].(float64); !ok {
-				bad = true
-			}
-		}
-		if bad {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has offers with gpu_frac=null", machineId))
-		}
-	}
 
 	// ensure there is no NaN/Inf in the result
 	for _, offer := range result {
