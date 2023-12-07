@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -100,28 +101,38 @@ func main() {
 
 	http.HandleFunc("/offers", func(w http.ResponseWriter, r *http.Request) {
 		// json list of offers
+		json := offerCache.rawOffersJson(false)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(offerCache.rawOffersJson(false))
+		w.Header().Set("Content-Length", strconv.Itoa(len(json)))
+		w.Write(json)
 	})
 	http.HandleFunc("/machines", func(w http.ResponseWriter, r *http.Request) {
 		// json list of machines
+		json := offerCache.rawOffersJson(true)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(offerCache.rawOffersJson(true))
+		w.Header().Set("Content-Length", strconv.Itoa(len(json)))
+		w.Write(json)
 	})
 	http.HandleFunc("/hosts", func(w http.ResponseWriter, r *http.Request) {
 		// json list of hosts
+		json := offerCache.hostsJson()
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(offerCache.hostsJson())
+		w.Header().Set("Content-Length", strconv.Itoa(len(json)))
+		w.Write(json)
 	})
 	http.HandleFunc("/gpu-stats", func(w http.ResponseWriter, r *http.Request) {
 		// json gpu stats
+		json := offerCache.gpuStatsJson()
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(offerCache.gpuStatsJson())
+		w.Header().Set("Content-Length", strconv.Itoa(len(json)))
+		w.Write(json)
 	})
 	http.HandleFunc("/host-map-data", func(w http.ResponseWriter, r *http.Request) {
 		// json for geomap
+		json := offerCache.hostMapJson()
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(offerCache.hostMapJson())
+		w.Header().Set("Content-Length", strconv.Itoa(len(json)))
+		w.Write(json)
 	})
 	http.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {
 		// global stats
