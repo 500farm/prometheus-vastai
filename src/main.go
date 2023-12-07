@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -49,6 +52,25 @@ func metricsHandler(w http.ResponseWriter, r *http.Request, collector prometheus
 	registry.MustRegister(collector)
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
+}
+
+func jsonHandler(w http.ResponseWriter, r *http.Request, json []byte) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		var buffer bytes.Buffer
+		writer, _ := gzip.NewWriterLevel(&buffer, gzip.BestSpeed)
+		writer.Write(json)
+		writer.Close()
+		gzipped := buffer.Bytes()
+
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Content-Length", strconv.Itoa(len(gzipped)))
+		w.Write(gzipped)
+	} else {
+		w.Header().Set("Content-Length", strconv.Itoa(len(json)))
+		w.Write(json)
+	}
 }
 
 func main() {
@@ -101,38 +123,23 @@ func main() {
 
 	http.HandleFunc("/offers", func(w http.ResponseWriter, r *http.Request) {
 		// json list of offers
-		json := offerCache.rawOffersJson(false)
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Content-Length", strconv.Itoa(len(json)))
-		w.Write(json)
+		jsonHandler(w, r, offerCache.rawOffersJson(false))
 	})
 	http.HandleFunc("/machines", func(w http.ResponseWriter, r *http.Request) {
 		// json list of machines
-		json := offerCache.rawOffersJson(true)
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Content-Length", strconv.Itoa(len(json)))
-		w.Write(json)
+		jsonHandler(w, r, offerCache.rawOffersJson(true))
 	})
 	http.HandleFunc("/hosts", func(w http.ResponseWriter, r *http.Request) {
 		// json list of hosts
-		json := offerCache.hostsJson()
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Content-Length", strconv.Itoa(len(json)))
-		w.Write(json)
+		jsonHandler(w, r, offerCache.hostsJson())
 	})
 	http.HandleFunc("/gpu-stats", func(w http.ResponseWriter, r *http.Request) {
 		// json gpu stats
-		json := offerCache.gpuStatsJson()
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Content-Length", strconv.Itoa(len(json)))
-		w.Write(json)
+		jsonHandler(w, r, offerCache.gpuStatsJson())
 	})
 	http.HandleFunc("/host-map-data", func(w http.ResponseWriter, r *http.Request) {
 		// json for geomap
-		json := offerCache.hostMapJson()
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Content-Length", strconv.Itoa(len(json)))
-		w.Write(json)
+		jsonHandler(w, r, offerCache.hostMapJson())
 	})
 	http.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {
 		// global stats
