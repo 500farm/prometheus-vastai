@@ -15,7 +15,7 @@ type VastAiInvoices struct {
 	} `json:"current"`
 	Invoices []struct {
 		Type   string  `json:"type"`
-		Amount string  `json:"amount"`
+		Amount float64 `json:"amount"`
 		Ts     float64 `json:"timestamp"`
 	} `json:"invoices"`
 }
