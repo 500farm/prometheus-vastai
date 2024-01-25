@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"strconv"
 
 	"github.com/prometheus/common/log"
 )
@@ -36,7 +35,7 @@ func getPayouts() (*PayoutInfo, error) {
 	lastPayoutTime := 0.0
 	for _, invoice := range data.Invoices {
 		if invoice.Type == "payment" {
-			amount, _ := strconv.ParseFloat(invoice.Amount, 64)
+			amount := invoice.Amount
 			if amount > 0 {
 				paidOut += int64(amount * 100)
 				if invoice.Ts > lastPayoutTime {
