@@ -10,7 +10,7 @@ import (
 
 type VastAiInvoices struct {
 	Current struct {
-		Total float64 `json:"total"`
+		Charges float64 `json:"charges"`
 	} `json:"current"`
 	Invoices []struct {
 		Type   string  `json:"type"`
@@ -44,7 +44,7 @@ func getPayouts() (*PayoutInfo, error) {
 			}
 		}
 	}
-	return &PayoutInfo{float64(paidOut) / 100, data.Current.Total, lastPayoutTime}, nil
+	return &PayoutInfo{float64(paidOut) / 100, data.Current.Charges, lastPayoutTime}, nil
 }
 
 func readLastPayouts() *PayoutInfo {
