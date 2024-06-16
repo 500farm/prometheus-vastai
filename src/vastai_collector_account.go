@@ -265,7 +265,6 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 	for _, machine := range *info.myMachines {
 		labels := prometheus.Labels{
 			"machine_id": strconv.Itoa(machine.Id),
-			"ip_address": machine.IpAddress,
 		}
 
 		e.machine_info.
@@ -280,8 +279,9 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 
 		// inet up/down
 		t := e.machine_inet_bps.MustCurryWith(labels)
-		t.With(prometheus.Labels{"direction": "up"}).Set(machine.InetUp * 1e6)
-		t.With(prometheus.Labels{"direction": "down"}).Set(machine.InetDown * 1e6)
+		ip := machine.IpAddress
+		t.With(prometheus.Labels{"ip_address": ip, "direction": "up"}).Set(machine.InetUp * 1e6)
+		t.With(prometheus.Labels{"ip_address": ip, "direction": "down"}).Set(machine.InetDown * 1e6)
 
 		//
 		e.machine_ondemand_price_per_gpu_dollars.With(labels).Set(machine.ListedGpuCost)
