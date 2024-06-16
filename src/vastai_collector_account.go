@@ -106,7 +106,7 @@ func newVastAiAccountCollector() *VastAiAccountCollector {
 			Namespace: namespace,
 			Name:      "machine_inet_bps",
 			Help:      "Measured internet speed, download or upload (direction = 'up'/'down')",
-		}, []string{"machine_id", "direction", "ip_address"}),
+		}, []string{"machine_id", "ip_address", "direction"}),
 		machine_per_gpu_teraflops: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_per_gpu_teraflops",
