@@ -77,8 +77,8 @@ vastai_machine_gpu_count{machine_id="2100"} 2
 vastai_machine_gpu_count{machine_id="3100"} 2
 
 # HELP vastai_machine_inet_bps Measured internet speed, download or upload (direction = 'up'/'down')
-vastai_machine_inet_bps{direction="down",id="2100"} 4.397e+08
-vastai_machine_inet_bps{direction="down",id="3100"} 4.831e+08
+vastai_machine_inet_bps{direction="down",id="2100",ip_adddress="1.1.1.1"} 4.397e+08
+vastai_machine_inet_bps{direction="down",id="3100",ip_adddress="1.1.1.1"} 4.831e+08
 
 # HELP vastai_machine_is_listed Is machine listed (1) or not (0)
 vastai_machine_is_listed{machine_id="2100"} 1
