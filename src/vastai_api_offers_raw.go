@@ -339,6 +339,10 @@ func (offer VastAiRawOffer) verified() bool {
 	return offer["verified"].(bool)
 }
 
+func (offer VastAiRawOffer) datacenter() bool {
+	return int(offer["hosting_type"].(float64)) > 0
+}
+
 func (offer VastAiRawOffer) rentable() bool {
 	return offer["rentable"].(bool)
 }
