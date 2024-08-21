@@ -25,6 +25,7 @@ type PayoutInfo struct {
 	LastPayoutTime float64 `json:"lastPayoutTime"`
 }
 
+// TODO collect payouts since the beginning of time
 func getPayouts() (*PayoutInfo, error) {
 	var data VastAiInvoices
 	err := vastApiCall(&data, "users/current/invoices", nil, defaultTimeout)

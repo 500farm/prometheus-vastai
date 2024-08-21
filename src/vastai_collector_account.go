@@ -269,7 +269,8 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 	e.VastAiPriceStatsCollector.UpdateFrom(offerCache, myGpus)
 
 	// process machines
-	// TODO handle disappeared machines
+	// TODO handle disappeared machines, changed hostnames, gpu names, ip addresses
+	// TODO add disk space (alloc_disk_space, avail_disk_space)
 	for _, machine := range *info.myMachines {
 		labels := prometheus.Labels{
 			"machine_id": strconv.Itoa(machine.Id),

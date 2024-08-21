@@ -138,6 +138,7 @@ type Chunk2 struct {
 	Rentable bool `json:"rentable"`
 }
 
+// TODO use gpu_ids to match offers
 func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) VastAiRawOffers {
 	result := make(VastAiRawOffers, 0, len(prevResult))
 
@@ -177,7 +178,8 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 		//             [3 4 7], actual min_chunk is 4
 		// TODO currently unhandled:
 		//             [1 3 3 3 4 7], actual min_chunk is 3
-		//             [2 4 6 8 10], ???
+		//             [2 4 6 8 10]
+		//             [4 6 6 8 12]
 		minChunkSize := chunks[0].size
 		if countBySize[minChunkSize] == 1 && len(chunks) >= 3 {
 			minChunkSize = chunks[1].size
