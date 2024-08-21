@@ -236,7 +236,19 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 			"chunks":          chunks2,
 		}
 		for k, v := range wholeMachine.offer {
-			if k != "gpu_frac" && k != "rentable" && k != "bundle_id" && k != "cpu_cores_effective" && k != "hostname" && k != "id" {
+			// skip some fields useless for this purpose:
+			if k != "gpu_frac" && // always 1.0 for whole machines
+				k != "rentable" && // only makes sense for separate offers
+				k != "bundle_id" && // useless
+				k != "bundled_results" && // useless
+				k != "cpu_cores_effective" && // for whole machines equals to cpu_cores
+				k != "hostname" && // always null
+				k != "id" && // only makes sense for separate offers
+				k != "ask_contract_id" && // equals to id
+				k != "instance" && // useless
+				k != "search" && // useless
+				k != "time_remaining" && // always null
+				k != "time_remaining_isbid" { //always null
 				newOffer[k] = v
 			}
 		}
