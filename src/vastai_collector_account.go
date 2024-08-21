@@ -272,6 +272,10 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 	// TODO handle disappeared machines, changed hostnames, gpu names, ip addresses
 	// TODO add disk space (alloc_disk_space, avail_disk_space)
 	for _, machine := range *info.myMachines {
+		if machine.Hostname == "" || machine.GpuName == "" {
+			continue
+		}
+
 		labels := prometheus.Labels{
 			"machine_id": strconv.Itoa(machine.Id),
 		}
