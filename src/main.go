@@ -78,6 +78,10 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
+	if *apiKey == "" {
+		log.Fatalln("API key is required")
+	}
+
 	log.Infoln("Starting vast.ai exporter")
 
 	if *stateDir == "" {
