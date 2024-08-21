@@ -7,10 +7,12 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-set/v2"
 	"github.com/prometheus/common/log"
 )
 
@@ -130,15 +132,22 @@ type Chunk struct {
 	offerId  int
 	rentable bool
 	dlperf   float64
+	gpuIds   set.Set[int]
 }
 
 type Chunk2 struct {
-	Size     int  `json:"size"`
-	OfferId  int  `json:"offerId"`
-	Rentable bool `json:"rentable"`
+	Size     int   `json:"size"`
+	OfferId  int   `json:"offerId"`
+	Rentable bool  `json:"rentable"`
+	GpuIds   []int `json:"gpu_ids"`
 }
 
-// TODO use gpu_ids to match offers
+func (chunk Chunk) gpuIdsSorted() []int {
+	gpuIds := chunk.gpuIds.Slice()
+	slices.Sort(gpuIds)
+	return gpuIds
+}
+
 func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) VastAiRawOffers {
 	result := make(VastAiRawOffers, 0, len(prevResult))
 
@@ -155,70 +164,62 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 				frac:     offer.gpuFrac(),
 				rentable: offer.rentable(),
 				dlperf:   offer.dlperf(),
+				gpuIds:   *offer.gpuIds(),
 			})
 		}
 		sort.Slice(chunks, func(i, j int) bool {
 			return chunks[i].size*1e12+chunks[i].offerId < chunks[j].size*1e12+chunks[j].offerId
 		})
 
-		// - create map: chunk size => number of chunks of this size
 		// - find offer corresponding to the whole machine
-		countBySize := make(map[int]int)
+		// - build up the list of free gpu_ids
 		var wholeMachine *Chunk
+		freeGpuIds := set.New[int](32)
 		for _, chunk := range chunks {
-			countBySize[chunk.size]++
 			if chunk.frac == 1.0 {
-				wholeMachine = &chunk
+				if wholeMachine == nil {
+					wholeMachine = &chunk
+				} else {
+					log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d listed multiple times", machineId))
+				}
+			}
+			if chunk.rentable {
+				freeGpuIds.InsertSet(&chunk.gpuIds)
 			}
 		}
+		totalGpus := wholeMachine.size
+		usedGpus := totalGpus - freeGpuIds.Size()
 
+		// - figure out min_chunk for this machine
 		// - correction for the case where whole machine size is not a multiple of min_chunk
 		// - in this case, there is always a single remainder chunk which is smaller than actual min_chunk
 		//   examples: [1 2 2 2 3 4 7] [1 2 3], actual min_chunk is 2
 		//             [3 4 7], actual min_chunk is 4
-		// TODO currently unhandled:
 		//             [1 3 3 3 4 7], actual min_chunk is 3
-		//             [2 4 6 8 10]
-		//             [4 6 6 8 12]
+		// TODO can not be handled properly:
+		//             [2 4 6 8 10], actual min_chunk is unknown
+		//             [4 6 6 8 12], actual min_chunk is unknown
 		minChunkSize := chunks[0].size
-		if countBySize[minChunkSize] == 1 && len(chunks) >= 3 {
+		if len(chunks) >= 3 && chunks[0].size != chunks[1].size {
 			minChunkSize = chunks[1].size
 		}
 
-		// - iterate over non-dividable chunks and sum up GPU counts
-		totalGpus := 0
-		usedGpus := 0
-		for _, offer := range offers {
-			numGpus := offer.numGpus()
-			if numGpus <= minChunkSize {
-				totalGpus += numGpus
-				if !offer.rentable() {
-					usedGpus += numGpus
-				}
+		// - validate: non-dividable chunks must sum up to the machine size
+		chunkGpus := 0
+		for _, chunk := range chunks {
+			if chunk.size <= minChunkSize {
+				chunkGpus += chunk.size
 			}
 		}
-
-		// - validate: there must be exactly one whole machine offer, and non-dividable chunks must sum up to the machine size
-		if wholeMachine == nil || wholeMachine.size != totalGpus || countBySize[wholeMachine.size] != 1 {
+		if chunkGpus != totalGpus {
 			chunkSizes := make([]int, 0, len(offers))
 			offerIds := make([]int, 0, len(offers))
 			for _, chunk := range chunks {
 				offerIds = append(offerIds, chunk.offerId)
 				chunkSizes = append(chunkSizes, chunk.size)
 			}
-
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has invalid chunk split %v, offer_ids %v",
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has weird chunk set %v, offer_ids %v",
 				machineId, chunkSizes, offerIds))
-
-			// preserve existing record for this machine (if exists)
-			for _, prevOffer := range prevResult {
-				if prevOffer.machineId() == machineId {
-					result = append(result, prevOffer)
-					break
-				}
-			}
-
-			continue
 		}
 
 		// - produce modified offer record with added num_gpus_rented and removed gpu_frac etc
@@ -228,12 +229,14 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 				OfferId:  chunk.offerId,
 				Size:     chunk.size,
 				Rentable: chunk.rentable,
+				GpuIds:   chunk.gpuIdsSorted(),
 			})
 		}
 		newOffer := VastAiRawOffer{
 			"num_gpus_rented": usedGpus,
 			"min_chunk":       minChunkSize,
 			"chunks":          chunks2,
+			"gpu_ids":         wholeMachine.gpuIdsSorted(),
 		}
 		for k, v := range wholeMachine.offer {
 			// skip some fields useless for this purpose:
@@ -248,7 +251,8 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 				k != "instance" && // useless
 				k != "search" && // useless
 				k != "time_remaining" && // always null
-				k != "time_remaining_isbid" { //always null
+				k != "time_remaining_isbid" && //always null
+				k != "gpu_ids" { // already there
 				newOffer[k] = v
 			}
 		}
@@ -341,6 +345,15 @@ func (offer VastAiRawOffer) rentable() bool {
 
 func (offer VastAiRawOffer) dlperf() float64 {
 	return offer["dlperf"].(float64)
+}
+
+func (offer VastAiRawOffer) gpuIds() *set.Set[int] {
+	items := offer["gpu_ids"].([]interface{})
+	result := set.New[int](len(items))
+	for _, item := range items {
+		result.Insert(int(item.(float64)))
+	}
+	return result
 }
 
 func (offer VastAiRawOffer) fixFloats() {
