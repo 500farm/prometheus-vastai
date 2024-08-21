@@ -8,15 +8,16 @@ import (
 )
 
 type VastAiOffer struct {
-	MachineId     int
-	GpuName       string
-	NumGpus       int
-	NumGpusRented int
-	PricePerGpu   int // in cents
-	Verified      bool
-	Vram          float64
-	DlperfPerGpu  float64
-	TflopsPerGpu  float64
+	MachineId         int
+	GpuName           string
+	NumGpus           int
+	NumGpusRented     int
+	PricePerGpu       int // in cents
+	Verified          bool
+	Vram              float64
+	DlperfPerGpuChunk float64
+	DlperfPerGpuWhole float64
+	TflopsPerGpu      float64
 }
 type VastAiOffers []VastAiOffer
 
@@ -62,9 +63,11 @@ func (offers VastAiRawOffers) decode() VastAiOffers {
 		}
 		vram, _ := offer["gpu_ram"].(float64)
 		dlperf, _ := offer["dlperf"].(float64)
+		dlperfChunk, _ := offer["dlperf_chunk"].(float64)
 		tflops, _ := offer["total_flops"].(float64)
 		decoded.Vram = math.Ceil(vram / 1024)
-		decoded.DlperfPerGpu = dlperf / float64(numGpus)
+		decoded.DlperfPerGpuWhole = dlperf / float64(numGpus)
+		decoded.DlperfPerGpuChunk = dlperfChunk / float64(numGpus)
 		decoded.TflopsPerGpu = tflops / float64(numGpus)
 		result = append(result, decoded)
 	}
@@ -135,7 +138,7 @@ func (offers VastAiOffers) stats(perDlPerf bool) OfferStats {
 	for _, offer := range offers {
 		pricePerGpu := float64(offer.PricePerGpu)
 		if perDlPerf {
-			pricePerGpu = math.Floor(pricePerGpu * 100.0 / offer.DlperfPerGpu)
+			pricePerGpu = math.Floor(pricePerGpu * 100.0 / offer.DlperfPerGpuChunk)
 		}
 		for i := 0; i < offer.NumGpus; i++ {
 			prices = append(prices, pricePerGpu)
@@ -171,7 +174,7 @@ func (offers VastAiOffers) gpuInfo() *GpuInfo {
 	tflopsVals := []float64{}
 	for _, offer := range offers {
 		vramVals = append(vramVals, offer.Vram)
-		dlperfVals = append(dlperfVals, offer.DlperfPerGpu)
+		dlperfVals = append(dlperfVals, offer.DlperfPerGpuChunk)
 		tflopsVals = append(tflopsVals, offer.TflopsPerGpu)
 	}
 

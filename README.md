@@ -96,10 +96,15 @@ vastai_machine_is_verified{machine_id="3100"} 1
 vastai_machine_ondemand_price_per_gpu_dollars{machine_id="2100"} 0.7
 vastai_machine_ondemand_price_per_gpu_dollars{machine_id="3100"} 0.7
 
-# HELP vastai_machine_per_gpu_dlperf_score DLPerf score per GPU
-# TYPE vastai_machine_per_gpu_dlperf_score gauge
+# HELP vastai_machine_per_gpu_dlperf_score_chunk DLPerf score per GPU (measured on a minimal chunk)
+# TYPE vastai_machine_per_gpu_dlperf_score_chunk gauge
 vastai_machine_per_gpu_dlperf_score{machine_id="2100"} 16.80498575
 vastai_machine_per_gpu_dlperf_score{machine_id="3100"} 16.700071
+
+# HELP vastai_machine_per_gpu_dlperf_score_whole DLPerf score per GPU (measured on the whole machine)
+# TYPE vastai_machine_per_gpu_dlperf_score_whole gauge
+vastai_machine_per_gpu_dlperf_score2{machine_id="2100"} 16.80498575
+vastai_machine_per_gpu_dlperf_score2{machine_id="3100"} 16.700071
 
 # HELP vastai_machine_per_gpu_teraflops Performance in TFLOPS per GPU
 # TYPE vastai_machine_per_gpu_teraflops gauge

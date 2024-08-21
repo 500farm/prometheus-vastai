@@ -274,11 +274,7 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 			}
 		}
 		dlperfPerGpu := dlperfPerGpuSum / dlperfPerGpuCount
-		newOffer["dlperf"] = dlperfPerGpu * float64(totalGpus)
-		v := dlperfPerGpu / float64(wholeMachine.offer.pricePerGpu()) * 100
-		if !math.IsInf(v, 0) {
-			newOffer["dlperf_per_dphtotal"] = v
-		}
+		newOffer["dlperf_chunk"] = dlperfPerGpu * float64(totalGpus)
 
 		// - ensure there is no NaN/Inf in the result
 		newOffer.fixFloats()

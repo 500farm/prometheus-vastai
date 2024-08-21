@@ -25,14 +25,15 @@ type VastAiAccountCollector struct {
 	paid_out_dollars       prometheus.Gauge
 	last_payout_time       prometheus.Gauge
 
-	machine_info                 *prometheus.GaugeVec
-	machine_is_verified          *prometheus.GaugeVec
-	machine_is_listed            *prometheus.GaugeVec
-	machine_is_online            *prometheus.GaugeVec
-	machine_reliability          *prometheus.GaugeVec
-	machine_inet_bps             *prometheus.GaugeVec
-	machine_per_gpu_teraflops    *prometheus.GaugeVec
-	machine_per_gpu_dlperf_score *prometheus.GaugeVec
+	machine_info                       *prometheus.GaugeVec
+	machine_is_verified                *prometheus.GaugeVec
+	machine_is_listed                  *prometheus.GaugeVec
+	machine_is_online                  *prometheus.GaugeVec
+	machine_reliability                *prometheus.GaugeVec
+	machine_inet_bps                   *prometheus.GaugeVec
+	machine_per_gpu_teraflops          *prometheus.GaugeVec
+	machine_per_gpu_dlperf_score_chunk *prometheus.GaugeVec
+	machine_per_gpu_dlperf_score_whole *prometheus.GaugeVec
 
 	machine_ondemand_price_per_gpu_dollars *prometheus.GaugeVec
 	machine_gpu_count                      *prometheus.GaugeVec
@@ -112,10 +113,15 @@ func newVastAiAccountCollector() *VastAiAccountCollector {
 			Name:      "machine_per_gpu_teraflops",
 			Help:      "Performance in TFLOPS per GPU",
 		}, []string{"machine_id"}),
-		machine_per_gpu_dlperf_score: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		machine_per_gpu_dlperf_score_chunk: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "machine_per_gpu_dlperf_score",
-			Help:      "DLPerf score per GPU",
+			Name:      "machine_per_gpu_dlperf_score_chunk",
+			Help:      "DLPerf score per GPU (measured on a minimal chunk)",
+		}, []string{"machine_id"}),
+		machine_per_gpu_dlperf_score_whole: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "machine_per_gpu_dlperf_score_whole",
+			Help:      "DLPerf score per GPU (measured on the whole machine)",
 		}, []string{"machine_id"}),
 
 		machine_ondemand_price_per_gpu_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -192,7 +198,8 @@ func (e *VastAiAccountCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.machine_reliability.Describe(ch)
 	e.machine_inet_bps.Describe(ch)
 	e.machine_per_gpu_teraflops.Describe(ch)
-	e.machine_per_gpu_dlperf_score.Describe(ch)
+	e.machine_per_gpu_dlperf_score_chunk.Describe(ch)
+	e.machine_per_gpu_dlperf_score_whole.Describe(ch)
 
 	e.machine_ondemand_price_per_gpu_dollars.Describe(ch)
 	e.machine_gpu_count.Describe(ch)
@@ -222,7 +229,8 @@ func (e *VastAiAccountCollector) Collect(ch chan<- prometheus.Metric) {
 	e.machine_reliability.Collect(ch)
 	e.machine_inet_bps.Collect(ch)
 	e.machine_per_gpu_teraflops.Collect(ch)
-	e.machine_per_gpu_dlperf_score.Collect(ch)
+	e.machine_per_gpu_dlperf_score_chunk.Collect(ch)
+	e.machine_per_gpu_dlperf_score_whole.Collect(ch)
 
 	e.machine_ondemand_price_per_gpu_dollars.Collect(ch)
 	e.machine_gpu_count.Collect(ch)
@@ -300,16 +308,21 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 		t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "stopped"}).Set(float64(countBidStopped))
 
 		// get dlperf from offer list
-		dlPerf := 0.0
+		chunkDlPerf := 0.0
+		wholeDlPerf := 0.0
 		for _, offer := range offerCache.machines {
 			if offer.MachineId == machine.Id {
-				dlPerf = offer.DlperfPerGpu
+				chunkDlPerf = offer.DlperfPerGpuChunk
+				wholeDlPerf = offer.DlperfPerGpuWhole
 				break
 			}
 		}
 
-		if dlPerf > 0 {
-			e.machine_per_gpu_dlperf_score.With(labels).Set(dlPerf)
+		if chunkDlPerf > 0 {
+			e.machine_per_gpu_dlperf_score_chunk.With(labels).Set(chunkDlPerf)
+		}
+		if wholeDlPerf > 0 {
+			e.machine_per_gpu_dlperf_score_whole.With(labels).Set(wholeDlPerf)
 		}
 
 		// count my/default jobs
