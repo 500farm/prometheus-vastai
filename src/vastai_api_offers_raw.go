@@ -343,6 +343,10 @@ func (offer VastAiRawOffer) datacenter() bool {
 	return int(offer["hosting_type"].(float64)) > 0
 }
 
+func (offer VastAiRawOffer) staticIp() bool {
+	return offer["static_ip"].(bool)
+}
+
 func (offer VastAiRawOffer) rentable() bool {
 	return offer["rentable"].(bool)
 }

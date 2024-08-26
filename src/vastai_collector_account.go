@@ -28,6 +28,7 @@ type VastAiAccountCollector struct {
 	machine_info                       *prometheus.GaugeVec
 	machine_is_verified                *prometheus.GaugeVec
 	machine_is_dc                      *prometheus.GaugeVec
+	machine_has_static_ip              *prometheus.GaugeVec
 	machine_is_listed                  *prometheus.GaugeVec
 	machine_is_online                  *prometheus.GaugeVec
 	machine_reliability                *prometheus.GaugeVec
@@ -93,6 +94,11 @@ func newVastAiAccountCollector() *VastAiAccountCollector {
 			Namespace: namespace,
 			Name:      "machine_is_dc",
 			Help:      "Is machine marked as datacenter (1) or not (0)",
+		}, []string{"machine_id"}),
+		machine_has_static_ip: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "machine_has_static_ip",
+			Help:      "Does machine have static IP (1) or not (0)",
 		}, []string{"machine_id"}),
 		machine_is_listed: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -200,6 +206,7 @@ func (e *VastAiAccountCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.machine_info.Describe(ch)
 	e.machine_is_verified.Describe(ch)
 	e.machine_is_dc.Describe(ch)
+	e.machine_has_static_ip.Describe(ch)
 	e.machine_is_listed.Describe(ch)
 	e.machine_is_online.Describe(ch)
 	e.machine_reliability.Describe(ch)
@@ -232,6 +239,7 @@ func (e *VastAiAccountCollector) Collect(ch chan<- prometheus.Metric) {
 	e.machine_info.Collect(ch)
 	e.machine_is_verified.Collect(ch)
 	e.machine_is_dc.Collect(ch)
+	e.machine_has_static_ip.Collect(ch)
 	e.machine_is_listed.Collect(ch)
 	e.machine_is_online.Collect(ch)
 	e.machine_reliability.Collect(ch)
@@ -330,6 +338,7 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 					e.machine_per_gpu_dlperf_score_whole.With(labels).Set(offer.DlperfPerGpuWhole)
 				}
 				e.machine_is_dc.With(labels).Set(boolToFloat(offer.Datacenter))
+				e.machine_has_static_ip.With(labels).Set(boolToFloat((offer.StaticIp)))
 				break
 			}
 		}

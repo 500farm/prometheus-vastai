@@ -15,6 +15,7 @@ type VastAiOffer struct {
 	PricePerGpu       int // in cents
 	Verified          bool
 	Datacenter        bool
+	StaticIp          bool
 	Vram              float64
 	DlperfPerGpuChunk float64
 	DlperfPerGpuWhole float64
@@ -62,6 +63,7 @@ func (offers VastAiRawOffers) decode() VastAiOffers {
 			PricePerGpu:   offer.pricePerGpu(),
 			Verified:      offer.verified(),
 			Datacenter:    offer.datacenter(),
+			StaticIp:      offer.staticIp(),
 		}
 		vram, _ := offer["gpu_ram"].(float64)
 		dlperf, _ := offer["dlperf"].(float64)
