@@ -141,16 +141,18 @@ vastai_machine_rentals_count{machine_id="3100",rental_status="stopped"} 4
 vastai_machine_rentals_count{machine_id="3100",rental_status="stopped",rental_type="my"} 0
 vastai_machine_rentals_count{machine_id="3100",rental_status="stopped",rental_type="ondemand"} 6
 
-# HELP vastai_machine_used_gpu_count Number of GPUs running jobs (rental_type = 'ondemand'/'bid'/'default'/'my')
+# HELP vastai_machine_used_gpu_count Number of GPUs running jobs (rental_type = 'ondemand'/'reserved'/'bid'/'default'/'my')
 # TYPE vastai_machine_used_gpu_count gauge
 vastai_machine_used_gpu_count{machine_id="2100",rental_type="bid"} 0
 vastai_machine_used_gpu_count{machine_id="2100",rental_type="default"} 0
 vastai_machine_used_gpu_count{machine_id="2100",rental_type="my"} 0
 vastai_machine_used_gpu_count{machine_id="2100",rental_type="ondemand"} 2
+vastai_machine_used_gpu_count{machine_id="2100",rental_type="reserved"} 0
 vastai_machine_used_gpu_count{machine_id="3100",rental_type="bid"} 0
 vastai_machine_used_gpu_count{machine_id="3100",rental_type="default"} 0
 vastai_machine_used_gpu_count{machine_id="3100",rental_type="my"} 0
 vastai_machine_used_gpu_count{machine_id="3100",rental_type="ondemand"} 2
+vastai_machine_used_gpu_count{machine_id="3100",rental_type="reserved"} 0
 
 
 ### Info on your instances (these include default jobs and jobs started by you)

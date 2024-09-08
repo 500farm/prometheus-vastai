@@ -154,7 +154,7 @@ func newVastAiAccountCollector() *VastAiAccountCollector {
 		machine_used_gpu_count: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "machine_used_gpu_count",
-			Help:      "Number of GPUs running jobs (rental_type = 'ondemand'/'bid'/'default'/'my')",
+			Help:      "Number of GPUs running jobs (rental_type = 'ondemand'/'reserved'/'bid'/'default'/'my')",
 		}, []string{"machine_id", "rental_type"}),
 
 		instance_info: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -378,6 +378,7 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 			t.With(prometheus.Labels{"rental_type": "my", "rental_status": "stopped"}).Set(float64(myJobsStopped))
 
 			numGpusOnDemand := strings.Count(machine.GpuOccupancy, "D")
+			numGpusReserved := strings.Count(machine.GpuOccupancy, "R")
 			numGpusBid := strings.Count(machine.GpuOccupancy, "I")
 
 			u := e.machine_used_gpu_count.MustCurryWith(labels)
@@ -385,6 +386,7 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 			u.With(prometheus.Labels{"rental_type": "my"}).Set(float64(myJobsUsedGpus))
 			u.With(prometheus.Labels{"rental_type": "bid"}).Set(float64(numGpusBid))
 			u.With(prometheus.Labels{"rental_type": "ondemand"}).Set(float64(numGpusOnDemand))
+			u.With(prometheus.Labels{"rental_type": "reserved"}).Set(float64(numGpusReserved))
 		}
 
 	}
