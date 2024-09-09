@@ -187,6 +187,12 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 				freeGpuIds.InsertSet(&chunk.gpuIds)
 			}
 		}
+
+		if wholeMachine == nil {
+			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has no chunk with frac=1.0, skipping", machineId))
+			continue
+		}
+
 		totalGpus := wholeMachine.size
 		usedGpus := totalGpus - freeGpuIds.Size()
 
