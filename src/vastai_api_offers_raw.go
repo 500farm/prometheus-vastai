@@ -116,6 +116,43 @@ func (offers VastAiRawOffers) validate() VastAiRawOffers {
 	return result
 }
 
+func (offers VastAiRawOffers) dedupe() VastAiRawOffers {
+	type seenOffer struct {
+		machineId int
+		numGpus   int
+		dups      int
+	}
+
+	result := make(VastAiRawOffers, 0, len(offers))
+	seen := make(map[int]*seenOffer, len(offers))
+
+	for _, offer := range offers {
+		idVal, ok := offer["id"].(float64)
+		if !ok {
+			continue
+		}
+		id := int(idVal)
+		if info, exists := seen[id]; exists {
+			info.dups++
+			continue
+		}
+		seen[id] = &seenOffer{
+			machineId: offer.machineId(),
+			numGpus:   offer.numGpus(),
+		}
+		result = append(result, offer)
+	}
+
+	for id, info := range seen {
+		if info.dups > 0 {
+			log.Warnln(fmt.Sprintf("Offer ID %d (machine=%d, ngpu=%d) repeated %d times",
+				id, info.machineId, info.numGpus, info.dups))
+		}
+	}
+
+	return result
+}
+
 func (offers VastAiRawOffers) groupByMachineId() map[int]VastAiRawOffers {
 	grouped := make(map[int]VastAiRawOffers)
 	for _, offer := range offers {

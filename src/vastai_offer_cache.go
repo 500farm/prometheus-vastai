@@ -20,7 +20,7 @@ var offerCache OfferCache
 
 func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 	if apiRes.offers != nil {
-		cache.rawOffers = (*apiRes.offers).validate()
+		cache.rawOffers = (*apiRes.offers).validate().dedupe()
 		cache.wholeMachineRawOffers = cache.rawOffers.collectWholeMachines(cache.wholeMachineRawOffers)
 		cache.machines = cache.wholeMachineRawOffers.decode()
 		cache.ts = apiRes.ts
