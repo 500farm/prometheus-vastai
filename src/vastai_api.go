@@ -115,7 +115,7 @@ func (instance *VastAiInstance) isDefaultJob() bool {
 	return instance.BundleId == nil
 }
 
-func vastApiCall(result interface{}, endpoint string, args url.Values, timeout time.Duration) error {
+func vastApiCall(result any, endpoint string, args url.Values, timeout time.Duration) error {
 	body, err := vastApiCallRaw(endpoint, args, timeout)
 	if err != nil {
 		return err
