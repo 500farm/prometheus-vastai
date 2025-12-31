@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -92,7 +92,7 @@ func loadGeoCache() (*GeoCache, error) {
 	cache.maxMindUser = t[0]
 	cache.maxMindPass = t[1]
 
-	j, err := ioutil.ReadFile(geoCacheFile())
+	j, err := os.ReadFile(geoCacheFile())
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
@@ -131,7 +131,7 @@ func (cache *GeoCache) ipLocation(ip string) *GeoLocation {
 		log.Warnln("Invalid IP address:", ip)
 		return nil
 	}
-	if !parsedIp.IsGlobalUnicast() || parsedIp.IsPrivate() {
+	if !parsedIp.IsGlobalUnicast() || parsedIp.IsPrivate() || isCgnatIp(parsedIp) {
 		log.Warnln("IP address from an invalid range:", ip)
 		return nil
 	}
@@ -166,7 +166,7 @@ func (cache *GeoCache) ipLocation(ip string) *GeoLocation {
 func (cache *GeoCache) save() {
 	cache.removeExpired()
 	j, _ := json.MarshalIndent(cache, "", "    ")
-	err := ioutil.WriteFile(geoCacheFile(), j, 0600)
+	err := os.WriteFile(geoCacheFile(), j, 0600)
 	if err != nil {
 		log.Errorln(err)
 	}
@@ -185,7 +185,7 @@ func (cache *GeoCache) queryMaxMind(ip string) (*GeoLocation, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -261,4 +261,17 @@ func makeExpireTime() time.Time {
 
 func geoCacheFile() string {
 	return *stateDir + "/.vastai_geo_cache"
+}
+
+var _, cgnNet, _ = net.ParseCIDR("100.64.0.0/10")
+
+func isCgnatIp(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+	ip = ip.To4()
+	if ip == nil {
+		return false
+	}
+	return cgnNet.Contains(ip)
 }
