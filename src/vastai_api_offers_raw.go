@@ -143,11 +143,17 @@ func (offers VastAiRawOffers) dedupe() VastAiRawOffers {
 		result = append(result, offer)
 	}
 
+	dupIds := make([]int, 0, len(seen))
 	for id, info := range seen {
 		if info.dups > 0 {
-			log.Warnln(fmt.Sprintf("Offer ID %d (machine=%d, ngpu=%d) repeated %d times",
-				id, info.machineId, info.numGpus, info.dups))
+			dupIds = append(dupIds, id)
 		}
+	}
+	sort.Ints(dupIds)
+	for _, id := range dupIds {
+		info := seen[id]
+		log.Warnln(fmt.Sprintf("Offer ID %d (machine=%d, ngpu=%d) repeated %d times",
+			id, info.machineId, info.numGpus, info.dups))
 	}
 
 	return result
