@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"sort"
 	"strconv"
 	"time"
@@ -125,7 +124,7 @@ func (item1 Host) merge(item2 Host) Host {
 		Gpus:        gpus,
 		Tflops:      item1.Tflops + item2.Tflops,
 		Location:    item2.Location,
-		InetUp:      math.Max(item1.InetUp, item2.InetUp),
-		InetDown:    math.Max(item1.InetDown, item2.InetDown),
+		InetUp:      max(item1.InetUp, item2.InetUp),
+		InetDown:    max(item1.InetDown, item2.InetDown),
 	}
 }

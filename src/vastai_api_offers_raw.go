@@ -321,8 +321,8 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 		maxUp := 0.0
 		maxDown := 0.0
 		for _, offer := range offers {
-			maxUp = math.Max(maxUp, offer["inet_up"].(float64))
-			maxDown = math.Max(maxDown, offer["inet_down"].(float64))
+			maxUp = max(maxUp, offer["inet_up"].(float64))
+			maxDown = max(maxDown, offer["inet_down"].(float64))
 		}
 		if maxUp > 0 && maxDown > 0 {
 			newOffer["inet_up"] = maxUp

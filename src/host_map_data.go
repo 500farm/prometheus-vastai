@@ -3,12 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"sort"
 	"strconv"
 	"strings"
-
-	"log"
 )
 
 type MapLocation struct {
@@ -107,12 +106,14 @@ func (m GpuCounts) String() string {
 }
 
 func intListToString(ints []int) string {
-	r := ""
-	for _, i := range ints {
-		if r != "" {
-			r += ", "
-		}
-		r += strconv.Itoa(i)
+	if len(ints) == 0 {
+		return ""
 	}
-	return r
+	var b strings.Builder
+	b.WriteString(strconv.Itoa(ints[0]))
+	for _, i := range ints[1:] {
+		b.WriteString(", ")
+		b.WriteString(strconv.Itoa(i))
+	}
+	return b.String()
 }

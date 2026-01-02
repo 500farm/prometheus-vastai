@@ -144,7 +144,7 @@ func (offers VastAiOffers) stats(perDlPerf bool) OfferStats {
 		if perDlPerf {
 			pricePerGpu = math.Floor(pricePerGpu * 100.0 / offer.DlperfPerGpuChunk)
 		}
-		for i := 0; i < offer.NumGpus; i++ {
+		for range offer.NumGpus {
 			prices = append(prices, pricePerGpu)
 		}
 	}
