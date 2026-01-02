@@ -79,6 +79,8 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
+	log.SetFlags(0)
+
 	if *apiKey == "" {
 		log.Fatalln("API key is required")
 	}
