@@ -12,8 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"log"
+
 	"github.com/hashicorp/go-set/v2"
-	"github.com/prometheus/common/log"
 )
 
 type VastAiRawOffer map[string]any
@@ -109,7 +110,7 @@ func (offers VastAiRawOffers) validate() VastAiRawOffers {
 		if ok1 && ok2 && ok3 && ok4 && ok5 && ok6 {
 			return true
 		}
-		log.Warnln(fmt.Sprintf("Offer is missing required fields: %v", offer))
+		log.Println("WARN:", fmt.Sprintf("Offer is missing required fields: %v", offer))
 		return false
 	})
 
@@ -152,7 +153,7 @@ func (offers VastAiRawOffers) dedupe() VastAiRawOffers {
 	sort.Ints(dupIds)
 	for _, id := range dupIds {
 		info := seen[id]
-		log.Warnln(fmt.Sprintf("Offer ID %d (machine=%d, ngpu=%d) repeated %d times",
+		log.Println("WARN:", fmt.Sprintf("Offer ID %d (machine=%d, ngpu=%d) repeated %d times",
 			id, info.machineId, info.numGpus, info.dups))
 	}
 
@@ -223,7 +224,7 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 				if wholeMachine == nil {
 					wholeMachine = &chunk
 				} else {
-					log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d listed multiple times", machineId))
+					log.Println("WARN:", fmt.Sprintf("Offer list inconsistency: machine %d listed multiple times", machineId))
 				}
 			}
 			if chunk.rentable {
@@ -232,7 +233,7 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 		}
 
 		if wholeMachine == nil {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has no chunk with frac=1.0, skipping", machineId))
+			log.Println("WARN:", fmt.Sprintf("Offer list inconsistency: machine %d has no chunk with frac=1.0, skipping", machineId))
 			continue
 		}
 
@@ -267,7 +268,7 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 				offerIds = append(offerIds, chunk.offerId)
 				chunkSizes = append(chunkSizes, chunk.size)
 			}
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has weird chunk set %v, offer_ids %v",
+			log.Println("WARN:", fmt.Sprintf("Offer list inconsistency: machine %d has weird chunk set %v, offer_ids %v",
 				machineId, chunkSizes, offerIds))
 		}
 
@@ -418,7 +419,7 @@ func (offer VastAiRawOffer) fixFloats() {
 		switch fv := v.(type) {
 		case float64:
 			if math.IsInf(fv, 0) || math.IsNaN(fv) {
-				log.Warnln(fmt.Sprintf("Inf or NaN found with key '%s' in %v", k, offer))
+				log.Println("WARN:", fmt.Sprintf("Inf or NaN found with key '%s' in %v", k, offer))
 				offer[k] = nil
 			}
 		}

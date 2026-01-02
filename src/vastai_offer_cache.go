@@ -3,10 +3,9 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"sort"
 	"time"
-
-	"github.com/prometheus/common/log"
 )
 
 type OfferCache struct {
@@ -67,7 +66,7 @@ func (cache *OfferCache) rawOffersJson(wholeMachines bool) []byte {
 		Offers:    offers,
 	}, "", "    ")
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 		return nil
 	}
 	return result
@@ -112,7 +111,7 @@ func (cache *OfferCache) gpuStatsJson() []byte {
 
 	j, err := json.MarshalIndent(result, "", "    ")
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 		return []byte("{}")
 	}
 	return j

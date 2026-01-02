@@ -2,9 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"os"
-
-	"github.com/prometheus/common/log"
 )
 
 type VastAiInvoices struct {
@@ -51,14 +50,14 @@ func readLastPayouts() *PayoutInfo {
 	j, err := os.ReadFile(*stateDir + "/.vastai_last_payouts")
 	if err != nil {
 		if !os.IsNotExist(err) {
-			log.Errorln(err)
+			log.Println("ERROR:", err)
 		}
 		return nil
 	}
 	var payouts PayoutInfo
 	err = json.Unmarshal(j, &payouts)
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 		return nil
 	}
 	return &payouts
@@ -68,6 +67,6 @@ func storeLastPayouts(payouts *PayoutInfo) {
 	j, _ := json.Marshal(payouts)
 	err := os.WriteFile(*stateDir+"/.vastai_last_payouts", j, 0600)
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 	}
 }

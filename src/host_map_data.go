@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/prometheus/common/log"
+	"log"
 )
 
 type MapLocation struct {
@@ -54,7 +54,7 @@ func (cache *OfferCache) hostMapJson() []byte {
 		Items: mapItems,
 	}, "", "    ")
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 		return nil
 	}
 	return result

@@ -2,11 +2,11 @@ package main
 
 import (
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 )
 
 type instanceInfo struct {
@@ -479,6 +479,6 @@ func (e *VastAiAccountCollector) InitialUpdateFrom(info VastAiApiResults, offerC
 
 	e.UpdateFrom(info, offerCache)
 
-	log.Infoln(len(offerCache.rawOffers), "raw offers,", len(*info.myMachines), "machines,", len(*info.myInstances), "instances, payouts:", *info.payouts)
+	log.Println("INFO:", len(offerCache.rawOffers), "raw offers,", len(*info.myMachines), "machines,", len(*info.myInstances), "instances, payouts:", *info.payouts)
 	return nil
 }

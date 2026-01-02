@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/common/log"
+	"log"
 )
 
 type GeoLocation struct {
@@ -105,7 +105,7 @@ func loadGeoCache() (*GeoCache, error) {
 	}
 
 	cache.removeExpired()
-	log.Infof("Loaded geolocation cache: %d items", len(cache.Entries))
+	log.Printf("INFO: Loaded geolocation cache: %d items", len(cache.Entries))
 
 	if *noGeoLocation != "" {
 		for _, netStr := range strings.Split(*noGeoLocation, ",") {
@@ -113,13 +113,13 @@ func loadGeoCache() (*GeoCache, error) {
 			if len(netStr) > 0 {
 				_, net, err := net.ParseCIDR(netStr)
 				if err != nil {
-					log.Errorln(err)
+					log.Println("ERROR:", err)
 				} else {
 					cache.skipNets = append(cache.skipNets, *net)
 				}
 			}
 		}
-		log.Infof("Will skip geolocation for: %v", cache.skipNets)
+		log.Printf("INFO: Will skip geolocation for: %v", cache.skipNets)
 	}
 
 	return cache, nil
@@ -128,16 +128,16 @@ func loadGeoCache() (*GeoCache, error) {
 func (cache *GeoCache) ipLocation(ip string) *GeoLocation {
 	parsedIp := net.ParseIP(ip)
 	if parsedIp == nil {
-		log.Warnln("Invalid IP address:", ip)
+		log.Println("WARN: Invalid IP address:", ip)
 		return nil
 	}
 	if !parsedIp.IsGlobalUnicast() || parsedIp.IsPrivate() || isCgnatIp(parsedIp) {
-		log.Warnln("IP address from an invalid range:", ip)
+		log.Println("WARN: IP address from an invalid range:", ip)
 		return nil
 	}
 	for _, net := range cache.skipNets {
 		if net.Contains(parsedIp) {
-			log.Infoln("Skipped geolocation for IP:", ip)
+			log.Println("INFO: Skipped geolocation for IP:", ip)
 			return nil
 		}
 	}
@@ -158,7 +158,7 @@ func (cache *GeoCache) ipLocation(ip string) *GeoLocation {
 			Location: location,
 		}
 	} else {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 	}
 	return location
 }
@@ -168,7 +168,7 @@ func (cache *GeoCache) save() {
 	j, _ := json.MarshalIndent(cache, "", "    ")
 	err := os.WriteFile(geoCacheFile(), j, 0600)
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 	}
 }
 
@@ -192,15 +192,15 @@ func (cache *GeoCache) queryMaxMind(ip string) (*GeoLocation, error) {
 	code := resp.StatusCode
 	if code == 404 {
 		// IP not found in database, it's not an error
-		log.Warnln("IP not found by MaxMind:", ip)
+		log.Println("WARN: IP not found by MaxMind:", ip)
 		return nil, nil
 	}
 	if code != 200 {
-		log.Errorln(string(body))
+		log.Println("ERROR:", string(body))
 		if code == 401 || code == 402 {
 			// 401 Unauthorized or 402 Payment Required
 			cache.failed = true
-			log.Errorln("Disabling MaxMind until restart because of following:")
+			log.Println("ERROR: Disabling MaxMind until restart because of following:")
 		}
 		return nil, fmt.Errorf("%s returned: %s", url, resp.Status)
 	}

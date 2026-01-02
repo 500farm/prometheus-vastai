@@ -8,8 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	"log"
+
 	"github.com/mpvl/unique"
-	"github.com/prometheus/common/log"
 )
 
 type GpuCounts map[string]int
@@ -46,7 +47,7 @@ func (cache *OfferCache) hostsJson() []byte {
 		Hosts:     &hosts,
 	}, "", "    ")
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 		return nil
 	}
 	return result
