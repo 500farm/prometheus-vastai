@@ -16,6 +16,7 @@ type VastAiOffer struct {
 	Verified          bool
 	Datacenter        bool
 	StaticIp          bool
+	VmsEnabled        bool
 	Vram              float64
 	DlperfPerGpuChunk float64
 	DlperfPerGpuWhole float64
@@ -64,6 +65,7 @@ func (offers VastAiRawOffers) decode() VastAiOffers {
 			Verified:      offer.verified(),
 			Datacenter:    offer.datacenter(),
 			StaticIp:      offer.staticIp(),
+			VmsEnabled:    offer.vmsEnabled(),
 		}
 		vram, _ := offer["gpu_ram"].(float64)
 		dlperf, _ := offer["dlperf"].(float64)

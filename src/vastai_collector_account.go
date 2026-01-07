@@ -29,6 +29,7 @@ type VastAiAccountCollector struct {
 	machine_is_verified                *prometheus.GaugeVec
 	machine_is_dc                      *prometheus.GaugeVec
 	machine_has_static_ip              *prometheus.GaugeVec
+	machine_supports_vms               *prometheus.GaugeVec
 	machine_is_listed                  *prometheus.GaugeVec
 	machine_is_online                  *prometheus.GaugeVec
 	machine_reliability                *prometheus.GaugeVec
@@ -99,6 +100,11 @@ func newVastAiAccountCollector() *VastAiAccountCollector {
 			Namespace: namespace,
 			Name:      "machine_has_static_ip",
 			Help:      "Does machine have static IP (1) or not (0)",
+		}, []string{"machine_id"}),
+		machine_supports_vms: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "machine_supports_vms",
+			Help:      "Does machine support VMs (1) or not (0)",
 		}, []string{"machine_id"}),
 		machine_is_listed: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -207,6 +213,7 @@ func (e *VastAiAccountCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.machine_is_verified.Describe(ch)
 	e.machine_is_dc.Describe(ch)
 	e.machine_has_static_ip.Describe(ch)
+	e.machine_supports_vms.Describe(ch)
 	e.machine_is_listed.Describe(ch)
 	e.machine_is_online.Describe(ch)
 	e.machine_reliability.Describe(ch)
@@ -240,6 +247,7 @@ func (e *VastAiAccountCollector) Collect(ch chan<- prometheus.Metric) {
 	e.machine_is_verified.Collect(ch)
 	e.machine_is_dc.Collect(ch)
 	e.machine_has_static_ip.Collect(ch)
+	e.machine_supports_vms.Collect(ch)
 	e.machine_is_listed.Collect(ch)
 	e.machine_is_online.Collect(ch)
 	e.machine_reliability.Collect(ch)
@@ -328,7 +336,7 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 		t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "running"}).Set(float64(countBidRunning))
 		t.With(prometheus.Labels{"rental_type": "bid", "rental_status": "stopped"}).Set(float64(countBidStopped))
 
-		// get dlperf from offer list
+		// get dlperf etc from offer list
 		for _, offer := range offerCache.machines {
 			if offer.MachineId == machine.Id {
 				if offer.DlperfPerGpuChunk > 0 {
@@ -339,6 +347,7 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 				}
 				e.machine_is_dc.With(labels).Set(boolToFloat(offer.Datacenter))
 				e.machine_has_static_ip.With(labels).Set(boolToFloat((offer.StaticIp)))
+				e.machine_supports_vms.With(labels).Set(boolToFloat(offer.VmsEnabled))
 				break
 			}
 		}

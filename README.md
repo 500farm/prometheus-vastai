@@ -100,6 +100,10 @@ vastai_machine_is_dc{machine_id="3100"} 0
 vastai_machine_has_static_ip{machine_id="2100"} 1
 vastai_machine_has_static_ip{machine_id="3100"} 1
 
+# HELP vastai_machine_supports_vms Does machine support VMs (1) or not (0)
+vastai_machine_supports_vms{machine_id="2100"} 1
+vastai_machine_supports_vms{machine_id="3100"} 1
+
 # HELP vastai_machine_ondemand_price_per_gpu_dollars Machine on-demand price per GPU/hour
 vastai_machine_ondemand_price_per_gpu_dollars{machine_id="2100"} 0.7
 vastai_machine_ondemand_price_per_gpu_dollars{machine_id="3100"} 0.7

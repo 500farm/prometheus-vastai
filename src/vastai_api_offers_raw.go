@@ -401,6 +401,10 @@ func (offer VastAiRawOffer) rentable() bool {
 	return offer["rentable"].(bool)
 }
 
+func (offer VastAiRawOffer) vmsEnabled() bool {
+	return offer["vms_enabled"].(bool)
+}
+
 func (offer VastAiRawOffer) dlperf() float64 {
 	return offer["dlperf"].(float64)
 }
