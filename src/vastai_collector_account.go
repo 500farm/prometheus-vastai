@@ -270,12 +270,12 @@ func (e *VastAiAccountCollector) Collect(ch chan<- prometheus.Metric) {
 	e.instance_gpu_fraction.Collect(ch)
 }
 
-func (e *VastAiAccountCollector) UpdateFrom(info VastAiApiResults, offerCache *OfferCache) {
+func (e *VastAiAccountCollector) UpdateFrom(info VastAiApiResults, offerCache *OfferCacheSnapshot) {
 	e.UpdateMachinesAndInstances(info, offerCache)
 	e.UpdatePayouts(info)
 }
 
-func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResults, offerCache *OfferCache) {
+func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResults, offerCache *OfferCacheSnapshot) {
 	if info.myMachines == nil {
 		return
 	}
@@ -475,7 +475,7 @@ func (e *VastAiAccountCollector) UpdatePayouts(info VastAiApiResults) {
 	}
 }
 
-func (e *VastAiAccountCollector) InitialUpdateFrom(info VastAiApiResults, offerCache *OfferCache) error {
+func (e *VastAiAccountCollector) InitialUpdateFrom(info VastAiApiResults, offerCache *OfferCacheSnapshot) error {
 	if info.myInstances == nil || info.myMachines == nil || info.payouts == nil {
 		return errors.New("could not read all required data from Vast.ai")
 	}

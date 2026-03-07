@@ -2,10 +2,11 @@ package main
 
 import (
 	"cmp"
-	json "github.com/goccy/go-json"
 	"errors"
+	json "github.com/goccy/go-json"
 	"log"
 	"slices"
+	"sync"
 	"time"
 )
 
@@ -17,6 +18,14 @@ func timeStage(stage string) func() {
 }
 
 type OfferCache struct {
+	mu                    sync.RWMutex
+	rawOffers             VastAiRawOffers
+	wholeMachineRawOffers VastAiRawOffers
+	machines              VastAiOffers
+	ts                    time.Time
+}
+
+type OfferCacheSnapshot struct {
 	rawOffers             VastAiRawOffers
 	wholeMachineRawOffers VastAiRawOffers
 	machines              VastAiOffers
@@ -25,27 +34,45 @@ type OfferCache struct {
 
 var offerCache OfferCache
 
+func (cache *OfferCache) Snapshot() *OfferCacheSnapshot {
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
+
+	return &OfferCacheSnapshot{
+		rawOffers:             cache.rawOffers,
+		wholeMachineRawOffers: cache.wholeMachineRawOffers,
+		machines:              cache.machines,
+		ts:                    cache.ts,
+	}
+}
+
 func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 	if apiRes.offers != nil {
+		prev := cache.Snapshot()
+
 		done := timeStage("validate_dedupe")
-		cache.rawOffers = (*apiRes.offers).validate().dedupe()
+		rawOffers := (*apiRes.offers).validate().dedupe()
 		done()
 
 		done = timeStage("collect_whole_machines")
-		cache.wholeMachineRawOffers = cache.rawOffers.collectWholeMachines(cache.wholeMachineRawOffers)
+		wholeMachineRawOffers := rawOffers.collectWholeMachines(prev.wholeMachineRawOffers)
 		done()
 
 		done = timeStage("decode")
-		cache.machines = cache.wholeMachineRawOffers.decode()
+		machines := wholeMachineRawOffers.decode()
 		done()
 
+		cache.mu.Lock()
+
+		cache.rawOffers = rawOffers
+		cache.wholeMachineRawOffers = wholeMachineRawOffers
+		cache.machines = machines
 		cache.ts = apiRes.ts
 
+		cache.mu.Unlock()
+
 		if metrics != nil {
-			done = timeStage("get_hosts")
-			hosts := cache.wholeMachineRawOffers.getHosts()
-			done()
-			metrics.UpdateCounts(len(cache.rawOffers), len(cache.wholeMachineRawOffers), len(hosts))
+			metrics.UpdateCounts(len(rawOffers), len(wholeMachineRawOffers))
 		}
 
 		if geoCache != nil {
@@ -70,7 +97,7 @@ type RawOffersResponse struct {
 	Offers    *VastAiRawOffers `json:"offers"`
 }
 
-func (cache *OfferCache) rawOffersJson(wholeMachines bool) JsonResponse {
+func (cache *OfferCacheSnapshot) rawOffersJson(wholeMachines bool) JsonResponse {
 	if wholeMachines {
 		defer timeStage("json_machines")()
 	} else {
@@ -119,7 +146,7 @@ type GpuStatsResponse struct {
 	Models    []GpuStatsModel `json:"models"`
 }
 
-func (cache *OfferCache) gpuStatsJson() JsonResponse {
+func (cache *OfferCacheSnapshot) gpuStatsJson() JsonResponse {
 	defer timeStage("json_gpu_stats")()
 
 	groupedOffers := cache.machines.groupByGpu()

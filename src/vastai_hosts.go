@@ -33,7 +33,7 @@ type HostsResponse struct {
 	Hosts     *Hosts    `json:"hosts"`
 }
 
-func (cache *OfferCache) hostsJson() JsonResponse {
+func (cache *OfferCacheSnapshot) hostsJson() JsonResponse {
 	defer timeStage("json_hosts")()
 
 	hosts := cache.wholeMachineRawOffers.getHosts()
@@ -99,6 +99,10 @@ func (offers VastAiRawOffers) getHosts() Hosts {
 	slices.SortFunc(result2, func(a, b Host) int {
 		return cmp.Compare(b.Tflops, a.Tflops)
 	})
+
+	if metrics != nil {
+		metrics.hostCount.Set(float64(len(result2)))
+	}
 
 	return result2
 }

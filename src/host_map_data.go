@@ -39,7 +39,7 @@ type HostMapResponse struct {
 	Items HostMapItems `json:"items"`
 }
 
-func (cache *OfferCache) hostMapJson() JsonResponse {
+func (cache *OfferCacheSnapshot) hostMapJson() JsonResponse {
 	defer timeStage("json_host_map")()
 
 	hosts := cache.wholeMachineRawOffers.getHosts()

@@ -181,10 +181,9 @@ func (m *ExporterMetrics) ObserveAPIError(endpoint string, status string) {
 	m.apiErrorsTotal.WithLabelValues(endpoint, status).Inc()
 }
 
-func (m *ExporterMetrics) UpdateCounts(offers, machines, hosts int) {
+func (m *ExporterMetrics) UpdateCounts(offers, machines int) {
 	m.offerCount.Set(float64(offers))
 	m.machineCount.Set(float64(machines))
-	m.hostCount.Set(float64(hosts))
 }
 
 func (m *ExporterMetrics) ObserveProcessing(stage string, d time.Duration) {

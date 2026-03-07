@@ -34,7 +34,8 @@ var (
 	registryMu    sync.Mutex
 	cacheRegistry = make(map[string]*endpointCache)
 )
-func (cache *OfferCache) etag(endpoint string) string {
+
+func (cache *OfferCacheSnapshot) etag(endpoint string) string {
 	hash := sha256.Sum256([]byte(cache.ts.Format(time.RFC3339Nano) + "|" + endpoint))
 	return fmt.Sprintf(`"%x"`, hash[:8])
 }

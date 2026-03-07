@@ -91,15 +91,17 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	snap := offerCache.Snapshot()
+
 	// read info from vast.ai: global stats
 	vastAiGlobalCollector := newVastAiGlobalCollector()
-	vastAiGlobalCollector.UpdateFrom(&offerCache)
+	vastAiGlobalCollector.UpdateFrom(snap)
 
 	// read info from vast.ai: account stats (if api key is specified)
 	useAccount := *apiKey != ""
 	vastAiAccountCollector := newVastAiAccountCollector()
 	if useAccount {
-		err = vastAiAccountCollector.InitialUpdateFrom(info, &offerCache)
+		err = vastAiAccountCollector.InitialUpdateFrom(info, snap)
 		if err != nil {
 			// initial update must succeed, otherwise exit
 			log.Fatalln(err)
@@ -109,19 +111,24 @@ func main() {
 	}
 
 	http.HandleFunc("/offers", func(w http.ResponseWriter, r *http.Request) {
-		jsonHandler(w, r, offerCache.ts, func() JsonResponse { return offerCache.rawOffersJson(false) })
+		snap := offerCache.Snapshot()
+		jsonHandler(w, r, snap.ts, func() JsonResponse { return snap.rawOffersJson(false) })
 	})
 	http.HandleFunc("/machines", func(w http.ResponseWriter, r *http.Request) {
-		jsonHandler(w, r, offerCache.ts, func() JsonResponse { return offerCache.rawOffersJson(true) })
+		snap := offerCache.Snapshot()
+		jsonHandler(w, r, snap.ts, func() JsonResponse { return snap.rawOffersJson(true) })
 	})
 	http.HandleFunc("/hosts", func(w http.ResponseWriter, r *http.Request) {
-		jsonHandler(w, r, offerCache.ts, offerCache.hostsJson)
+		snap := offerCache.Snapshot()
+		jsonHandler(w, r, snap.ts, snap.hostsJson)
 	})
 	http.HandleFunc("/gpu-stats", func(w http.ResponseWriter, r *http.Request) {
-		jsonHandler(w, r, offerCache.ts, offerCache.gpuStatsJson)
+		snap := offerCache.Snapshot()
+		jsonHandler(w, r, snap.ts, snap.gpuStatsJson)
 	})
 	http.HandleFunc("/host-map-data", func(w http.ResponseWriter, r *http.Request) {
-		jsonHandler(w, r, offerCache.ts, offerCache.hostMapJson)
+		snap := offerCache.Snapshot()
+		jsonHandler(w, r, snap.ts, snap.hostMapJson)
 	})
 
 	http.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {
@@ -161,9 +168,10 @@ func main() {
 			time.Sleep(*updateInterval)
 			info := getVastAiInfo(*masterUrl)
 			offerCache.UpdateFrom(info)
-			vastAiGlobalCollector.UpdateFrom(&offerCache)
+			snap := offerCache.Snapshot()
+			vastAiGlobalCollector.UpdateFrom(snap)
 			if useAccount {
-				vastAiAccountCollector.UpdateFrom(info, &offerCache)
+				vastAiAccountCollector.UpdateFrom(info, snap)
 			}
 		}
 	}()
