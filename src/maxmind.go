@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math/rand"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"os"
@@ -257,7 +257,7 @@ func (entries GeoCacheEntries) removeExpired() GeoCacheEntries {
 
 func makeExpireTime() time.Time {
 	// randomize so all entries do not expire at the same time
-	extra := time.Duration(rand.Int63n(int64(GeoLocationTTLVariance)))
+	extra := time.Duration(rand.Int64N(int64(GeoLocationTTLVariance)))
 	return time.Now().Add(GeoLocationTTL).Add(extra)
 }
 
