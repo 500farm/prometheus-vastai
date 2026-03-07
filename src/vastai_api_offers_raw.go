@@ -9,9 +9,12 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"log"
 
 	"github.com/hashicorp/go-set/v2"
 )
@@ -124,9 +127,52 @@ func (offers VastAiRawOffers) validate() VastAiRawOffers {
 		if ok1 && ok2 && ok3 && ok4 && ok5 && ok6 {
 			return true
 		}
-		log.Warnln(fmt.Sprintf("Offer is missing required fields: %v", offer))
+		log.Println("WARN:", fmt.Sprintf("Offer is missing required fields: %v", offer))
 		return false
 	})
+
+	return result
+}
+
+func (offers VastAiRawOffers) dedupe() VastAiRawOffers {
+	type seenOffer struct {
+		machineId int
+		numGpus   int
+		dups      int
+	}
+
+	result := make(VastAiRawOffers, 0, len(offers))
+	seen := make(map[int]*seenOffer, len(offers))
+
+	for _, offer := range offers {
+		idVal, ok := offer["id"].(float64)
+		if !ok {
+			continue
+		}
+		id := int(idVal)
+		if info, exists := seen[id]; exists {
+			info.dups++
+			continue
+		}
+		seen[id] = &seenOffer{
+			machineId: offer.machineId(),
+			numGpus:   offer.numGpus(),
+		}
+		result = append(result, offer)
+	}
+
+	dupIds := make([]int, 0, len(seen))
+	for id, info := range seen {
+		if info.dups > 0 {
+			dupIds = append(dupIds, id)
+		}
+	}
+	sort.Ints(dupIds)
+	for _, id := range dupIds {
+		info := seen[id]
+		log.Println("WARN:", fmt.Sprintf("Offer ID %d (machine=%d, ngpu=%d) repeated %d times",
+			id, info.machineId, info.numGpus, info.dups))
+	}
 
 	return result
 }
@@ -198,7 +244,7 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 				if wholeMachine == nil {
 					wholeMachine = &chunk
 				} else {
-					log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d listed multiple times", machineId))
+					log.Println("WARN:", fmt.Sprintf("Offer list inconsistency: machine %d listed multiple times", machineId))
 				}
 			}
 			if chunk.rentable {
@@ -207,7 +253,7 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 		}
 
 		if wholeMachine == nil {
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has no chunk with frac=1.0, skipping", machineId))
+			log.Println("WARN:", fmt.Sprintf("Offer list inconsistency: machine %d has no chunk with frac=1.0, skipping", machineId))
 			continue
 		}
 
@@ -242,7 +288,7 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 				offerIds = append(offerIds, chunk.offerId)
 				chunkSizes = append(chunkSizes, chunk.size)
 			}
-			log.Warnln(fmt.Sprintf("Offer list inconsistency: machine %d has weird chunk set %v, offer_ids %v",
+			log.Println("WARN:", fmt.Sprintf("Offer list inconsistency: machine %d has weird chunk set %v, offer_ids %v",
 				machineId, chunkSizes, offerIds))
 		}
 
@@ -375,6 +421,10 @@ func (offer VastAiRawOffer) rentable() bool {
 	return offer["rentable"].(bool)
 }
 
+func (offer VastAiRawOffer) vmsEnabled() bool {
+	return offer["vms_enabled"].(bool)
+}
+
 func (offer VastAiRawOffer) dlperf() float64 {
 	return offer["dlperf"].(float64)
 }
@@ -393,7 +443,7 @@ func (offer VastAiRawOffer) fixFloats() {
 		switch fv := v.(type) {
 		case float64:
 			if math.IsInf(fv, 0) || math.IsNaN(fv) {
-				log.Warnln(fmt.Sprintf("Inf or NaN found with key '%s' in %v", k, offer))
+				log.Println("WARN:", fmt.Sprintf("Inf or NaN found with key '%s' in %v", k, offer))
 				offer[k] = nil
 			}
 		}

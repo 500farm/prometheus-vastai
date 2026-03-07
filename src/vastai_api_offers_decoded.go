@@ -16,6 +16,7 @@ type VastAiOffer struct {
 	Verified          bool
 	Datacenter        bool
 	StaticIp          bool
+	VmsEnabled        bool
 	Vram              float64
 	DlperfPerGpuChunk float64
 	DlperfPerGpuWhole float64
@@ -64,6 +65,7 @@ func (offers VastAiRawOffers) decode() VastAiOffers {
 			Verified:      offer.verified(),
 			Datacenter:    offer.datacenter(),
 			StaticIp:      offer.staticIp(),
+			VmsEnabled:    offer.vmsEnabled(),
 		}
 		vram, _ := offer["gpu_ram"].(float64)
 		dlperf, _ := offer["dlperf"].(float64)
@@ -144,7 +146,7 @@ func (offers VastAiOffers) stats(perDlPerf bool) OfferStats {
 		if perDlPerf {
 			pricePerGpu = math.Floor(pricePerGpu * 100.0 / offer.DlperfPerGpuChunk)
 		}
-		for i := 0; i < offer.NumGpus; i++ {
+		for range offer.NumGpus {
 			prices = append(prices, pricePerGpu)
 		}
 	}

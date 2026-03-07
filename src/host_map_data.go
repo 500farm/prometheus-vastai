@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"slices"
 	"strconv"
@@ -53,7 +54,7 @@ func (cache *OfferCache) hostMapJson() JsonResponse {
 		Items: mapItems,
 	}, "", "    ")
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag}
 	}
 	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag}
@@ -104,12 +105,14 @@ func (m GpuCounts) String() string {
 }
 
 func intListToString(ints []int) string {
-	r := ""
-	for _, i := range ints {
-		if r != "" {
-			r += ", "
-		}
-		r += strconv.Itoa(i)
+	if len(ints) == 0 {
+		return ""
 	}
-	return r
+	var b strings.Builder
+	b.WriteString(strconv.Itoa(ints[0]))
+	for _, i := range ints[1:] {
+		b.WriteString(", ")
+		b.WriteString(strconv.Itoa(i))
+	}
+	return b.String()
 }

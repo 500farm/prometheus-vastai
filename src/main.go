@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -56,11 +57,13 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
+	log.SetFlags(0)
+
 	if *apiKey == "" {
 		log.Fatalln("API key is required")
 	}
 
-	log.Infoln("Starting vast.ai exporter")
+	log.Println("INFO: Starting vast.ai exporter")
 
 	if *stateDir == "" {
 		*stateDir = os.Getenv("HOME")
@@ -78,7 +81,7 @@ func main() {
 
 	metrics = newExporterMetrics()
 
-	log.Infoln("Reading initial Vast.ai info (may take a minute)")
+	log.Println("INFO: Reading initial Vast.ai info (may take a minute)")
 
 	// read info from vast.ai: offers
 	info := getVastAiInfo(*masterUrl)
@@ -102,7 +105,7 @@ func main() {
 			log.Fatalln(err)
 		}
 	} else {
-		log.Infoln("No Vast.ai API key provided, only serving global stats")
+		log.Println("INFO: No Vast.ai API key provided, only serving global stats")
 	}
 
 	http.HandleFunc("/offers", func(w http.ResponseWriter, r *http.Request) {
@@ -170,6 +173,6 @@ func main() {
 		}
 	}()
 
-	log.Infoln("Listening on", *listenAddress)
+	log.Println("INFO: Listening on", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }

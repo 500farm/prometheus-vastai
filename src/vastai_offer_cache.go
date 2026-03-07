@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"errors"
+	"log"
 	"slices"
 	"time"
 )
@@ -20,7 +21,7 @@ var offerCache OfferCache
 
 func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 	if apiRes.offers != nil {
-		cache.rawOffers = (*apiRes.offers).validate()
+		cache.rawOffers = (*apiRes.offers).validate().dedupe()
 		cache.wholeMachineRawOffers = cache.rawOffers.collectWholeMachines(cache.wholeMachineRawOffers)
 		cache.machines = cache.wholeMachineRawOffers.decode()
 		cache.ts = apiRes.ts
@@ -74,7 +75,7 @@ func (cache *OfferCache) rawOffersJson(wholeMachines bool) JsonResponse {
 		Offers:    offers,
 	}, "", "    ")
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag}
 	}
 	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag}
@@ -119,7 +120,7 @@ func (cache *OfferCache) gpuStatsJson() JsonResponse {
 
 	j, err := json.MarshalIndent(result, "", "    ")
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 		return JsonResponse{Content: []byte("{}"), LastModified: cache.ts, ETag: cache.etag}
 	}
 	return JsonResponse{Content: j, LastModified: cache.ts, ETag: cache.etag}

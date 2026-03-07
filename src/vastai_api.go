@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -74,7 +75,7 @@ func getVastAiInfo(masterUrl string) VastAiApiResults {
 		time.Sleep(queryInterval)
 	}
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 	}
 
 	if *apiKey == "" {
@@ -85,7 +86,7 @@ func getVastAiInfo(masterUrl string) VastAiApiResults {
 		Machines []VastAiMachine `json:"machines"`
 	}
 	if err := vastApiCall(&response1, "machines", nil, defaultTimeout); err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 	} else {
 		result.myMachines = &response1.Machines
 	}
@@ -95,7 +96,7 @@ func getVastAiInfo(masterUrl string) VastAiApiResults {
 		Instances []VastAiInstance `json:"instances"`
 	}
 	if err := vastApiCall(&response2, "instances", nil, defaultTimeout); err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 	} else {
 		result.myInstances = &response2.Instances
 	}
@@ -103,7 +104,7 @@ func getVastAiInfo(masterUrl string) VastAiApiResults {
 
 	payouts, err := getPayouts()
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 	} else {
 		result.payouts = payouts
 	}
@@ -160,7 +161,7 @@ func vastApiCallRaw(endpoint string, args url.Values, timeout time.Duration) ([]
 	}
 
 	elapsed := time.Since(start)
-	log.Infoln("GET", url, "took", elapsed)
+	log.Println("INFO: GET", url, "took", elapsed)
 
 	if metrics != nil {
 		metrics.ObserveAPIDuration(endpoint, elapsed.Seconds())
@@ -172,7 +173,7 @@ func vastApiCallRaw(endpoint string, args url.Values, timeout time.Duration) ([]
 
 func logErrorBody(body []byte) {
 	bodyStr := regexp.MustCompile(`\s+`).ReplaceAllString(strings.TrimSpace(string(body)), " ")
-	log.Errorln(truncate.Truncate(bodyStr, 200, "...", truncate.PositionEnd))
+	log.Println("ERROR:", truncate.Truncate(bodyStr, 200, "...", truncate.PositionEnd))
 }
 
 func boolToFloat(v bool) float64 {

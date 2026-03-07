@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"fmt"
+	"log"
 	"slices"
 	"strconv"
 	"time"
@@ -43,7 +44,7 @@ func (cache *OfferCache) hostsJson() JsonResponse {
 		Hosts:     &hosts,
 	}, "", "    ")
 	if err != nil {
-		log.Errorln(err)
+		log.Println("ERROR:", err)
 		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag}
 	}
 	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag}
