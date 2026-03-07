@@ -78,6 +78,7 @@ func (cache *OfferCache) rawOffersJson(wholeMachines bool) JsonResponse {
 	} else {
 		defer timeStage("json_offers")()
 	}
+
 	var offers *VastAiRawOffers
 	url := "/offers"
 	if wholeMachines {
@@ -90,6 +91,7 @@ func (cache *OfferCache) rawOffersJson(wholeMachines bool) JsonResponse {
 	if wholeMachines {
 		note = "Sorted from newest to oldest."
 	}
+
 	result, err := json.MarshalIndent(RawOffersResponse{
 		Url:       url,
 		Timestamp: cache.ts.UTC(),
@@ -97,10 +99,12 @@ func (cache *OfferCache) rawOffersJson(wholeMachines bool) JsonResponse {
 		Note:      note,
 		Offers:    offers,
 	}, "", "    ")
+
 	if err != nil {
 		log.Println("ERROR:", err)
 		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag}
 	}
+
 	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag}
 }
 
@@ -119,6 +123,7 @@ type GpuStatsResponse struct {
 
 func (cache *OfferCache) gpuStatsJson() JsonResponse {
 	defer timeStage("json_gpu_stats")()
+
 	groupedOffers := cache.machines.groupByGpu()
 	result := GpuStatsResponse{
 		Url:       "/gpu-stats",
