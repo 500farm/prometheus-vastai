@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 
 	"github.com/prometheus/common/log"
@@ -49,7 +48,7 @@ func getPayouts() (*PayoutInfo, error) {
 }
 
 func readLastPayouts() *PayoutInfo {
-	j, err := ioutil.ReadFile(*stateDir + "/.vastai_last_payouts")
+	j, err := os.ReadFile(*stateDir + "/.vastai_last_payouts")
 	if err != nil {
 		if !os.IsNotExist(err) {
 			log.Errorln(err)
@@ -67,7 +66,7 @@ func readLastPayouts() *PayoutInfo {
 
 func storeLastPayouts(payouts *PayoutInfo) {
 	j, _ := json.Marshal(payouts)
-	err := ioutil.WriteFile(*stateDir+"/.vastai_last_payouts", j, 0600)
+	err := os.WriteFile(*stateDir+"/.vastai_last_payouts", j, 0600)
 	if err != nil {
 		log.Errorln(err)
 	}
