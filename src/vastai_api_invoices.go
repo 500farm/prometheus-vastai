@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"errors"
 	"io/fs"
 	"log"

@@ -2,7 +2,7 @@ package main
 
 import (
 	"cmp"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"errors"
 	"log"
 	"slices"
