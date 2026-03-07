@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"os"
 
 	"github.com/prometheus/common/log"
@@ -50,7 +52,7 @@ func getPayouts() (*PayoutInfo, error) {
 func readLastPayouts() *PayoutInfo {
 	j, err := os.ReadFile(*stateDir + "/.vastai_last_payouts")
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, fs.ErrNotExist) {
 			log.Errorln(err)
 		}
 		return nil
