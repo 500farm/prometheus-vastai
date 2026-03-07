@@ -17,7 +17,7 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-type VastAiRawOffer map[string]interface{}
+type VastAiRawOffer map[string]any
 type VastAiRawOffers []VastAiRawOffer
 
 func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
@@ -378,7 +378,7 @@ func (offer VastAiRawOffer) dlperf() float64 {
 }
 
 func (offer VastAiRawOffer) gpuIds() *set.Set[int] {
-	items := offer["gpu_ids"].([]interface{})
+	items := offer["gpu_ids"].([]any)
 	result := set.New[int](len(items))
 	for _, item := range items {
 		result.Insert(int(item.(float64)))
