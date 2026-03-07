@@ -109,24 +109,19 @@ func main() {
 	}
 
 	http.HandleFunc("/offers", func(w http.ResponseWriter, r *http.Request) {
-		// json list of offers
-		jsonHandler(w, r, offerCache.rawOffersJson(false))
+		jsonHandler(w, r, func() JsonResponse { return offerCache.rawOffersJson(false) })
 	})
 	http.HandleFunc("/machines", func(w http.ResponseWriter, r *http.Request) {
-		// json list of machines
-		jsonHandler(w, r, offerCache.rawOffersJson(true))
+		jsonHandler(w, r, func() JsonResponse { return offerCache.rawOffersJson(true) })
 	})
 	http.HandleFunc("/hosts", func(w http.ResponseWriter, r *http.Request) {
-		// json list of hosts
-		jsonHandler(w, r, offerCache.hostsJson())
+		jsonHandler(w, r, offerCache.hostsJson)
 	})
 	http.HandleFunc("/gpu-stats", func(w http.ResponseWriter, r *http.Request) {
-		// json gpu stats
-		jsonHandler(w, r, offerCache.gpuStatsJson())
+		jsonHandler(w, r, offerCache.gpuStatsJson)
 	})
 	http.HandleFunc("/host-map-data", func(w http.ResponseWriter, r *http.Request) {
-		// json for geomap
-		jsonHandler(w, r, offerCache.hostMapJson())
+		jsonHandler(w, r, offerCache.hostMapJson)
 	})
 
 	http.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {
