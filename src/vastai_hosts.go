@@ -47,10 +47,10 @@ func (cache *OfferCache) hostsJson() JsonResponse {
 	}, "", "    ")
 	if err != nil {
 		log.Println("ERROR:", err)
-		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag}
+		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag("/hosts")}
 	}
 
-	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag}
+	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag("/hosts")}
 }
 
 func (offers VastAiRawOffers) getHosts() Hosts {

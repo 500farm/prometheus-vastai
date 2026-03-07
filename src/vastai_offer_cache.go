@@ -21,7 +21,6 @@ type OfferCache struct {
 	wholeMachineRawOffers VastAiRawOffers
 	machines              VastAiOffers
 	ts                    time.Time
-	etag                  string
 }
 
 var offerCache OfferCache
@@ -41,7 +40,6 @@ func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 		done()
 
 		cache.ts = apiRes.ts
-		cache.etag = computeETag(cache.ts)
 
 		if metrics != nil {
 			done = timeStage("get_hosts")
@@ -102,10 +100,10 @@ func (cache *OfferCache) rawOffersJson(wholeMachines bool) JsonResponse {
 
 	if err != nil {
 		log.Println("ERROR:", err)
-		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag}
+		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag(url)}
 	}
 
-	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag}
+	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag(url)}
 }
 
 type GpuStatsModel struct {
@@ -150,7 +148,7 @@ func (cache *OfferCache) gpuStatsJson() JsonResponse {
 	j, err := json.MarshalIndent(result, "", "    ")
 	if err != nil {
 		log.Println("ERROR:", err)
-		return JsonResponse{Content: []byte("{}"), LastModified: cache.ts, ETag: cache.etag}
+		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag("/gpu-stats")}
 	}
-	return JsonResponse{Content: j, LastModified: cache.ts, ETag: cache.etag}
+	return JsonResponse{Content: j, LastModified: cache.ts, ETag: cache.etag("/gpu-stats")}
 }

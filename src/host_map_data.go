@@ -57,10 +57,10 @@ func (cache *OfferCache) hostMapJson() JsonResponse {
 	}, "", "    ")
 	if err != nil {
 		log.Println("ERROR:", err)
-		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag}
+		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag("/host-map-data")}
 	}
 
-	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag}
+	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag("/host-map-data")}
 }
 
 func (host *Host) mapItem() *HostMapItem {

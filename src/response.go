@@ -19,42 +19,47 @@ type JsonResponse struct {
 }
 
 type cachedResponse struct {
-	etag         string
-	lastModified time.Time
-	raw          []byte
-	gzipped      []byte
+	ts      time.Time
+	etag    string
+	raw     []byte
+	gzipped []byte
+}
+
+type endpointCache struct {
+	mu      sync.Mutex
+	current *cachedResponse
 }
 
 var (
-	jsonCacheMu sync.Mutex
-	jsonCache   = make(map[string]*cachedResponse)
+	registryMu    sync.Mutex
+	cacheRegistry = make(map[string]*endpointCache)
 )
-
-func computeETag(ts time.Time) string {
-	hash := sha256.Sum256([]byte(ts.Format(time.RFC3339Nano)))
+func (cache *OfferCache) etag(endpoint string) string {
+	hash := sha256.Sum256([]byte(cache.ts.Format(time.RFC3339Nano) + "|" + endpoint))
 	return fmt.Sprintf(`"%x"`, hash[:8])
 }
 
-func jsonHandler(w http.ResponseWriter, r *http.Request, generate func() JsonResponse) {
+func jsonHandler(w http.ResponseWriter, r *http.Request, currentTs time.Time, generate func() JsonResponse) {
 	endpoint := r.URL.Path
-	etag := offerCache.etag
-	lastModified := offerCache.ts
+
+	cached := getEndpointCache(endpoint).get(currentTs, generate)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Date", time.Now().UTC().Format(http.TimeFormat))
-	w.Header().Set("Last-Modified", lastModified.UTC().Format(http.TimeFormat))
-	w.Header().Set("ETag", etag)
+	w.Header().Set("Last-Modified", cached.ts.UTC().Format(http.TimeFormat))
+	w.Header().Set("ETag", cached.etag)
 
 	if match := r.Header.Get("If-None-Match"); match != "" {
-		if match == etag {
+		if match == cached.etag {
 			w.WriteHeader(http.StatusNotModified)
 			if metrics != nil {
 				metrics.ObserveServerNotModified(endpoint)
 			}
 			return
 		}
+
 	} else if ims := r.Header.Get("If-Modified-Since"); ims != "" {
-		if t, err := http.ParseTime(ims); err == nil && !lastModified.Truncate(time.Second).After(t) {
+		if t, err := http.ParseTime(ims); err == nil && !cached.ts.Truncate(time.Second).After(t) {
 			w.WriteHeader(http.StatusNotModified)
 			if metrics != nil {
 				metrics.ObserveServerNotModified(endpoint)
@@ -63,14 +68,13 @@ func jsonHandler(w http.ResponseWriter, r *http.Request, generate func() JsonRes
 		}
 	}
 
-	cached := getCachedResponse(endpoint, etag, generate)
-
 	written := 0
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Content-Length", strconv.Itoa(len(cached.gzipped)))
 		w.Write(cached.gzipped)
 		written = len(cached.gzipped)
+
 	} else {
 		w.Header().Set("Content-Length", strconv.Itoa(len(cached.raw)))
 		w.Write(cached.raw)
@@ -82,12 +86,12 @@ func jsonHandler(w http.ResponseWriter, r *http.Request, generate func() JsonRes
 	}
 }
 
-func getCachedResponse(endpoint string, etag string, generate func() JsonResponse) *cachedResponse {
-	jsonCacheMu.Lock()
-	defer jsonCacheMu.Unlock()
+func (ec *endpointCache) get(currentTs time.Time, generate func() JsonResponse) *cachedResponse {
+	ec.mu.Lock()
+	defer ec.mu.Unlock()
 
-	if entry, ok := jsonCache[endpoint]; ok && entry.etag == etag {
-		return entry
+	if ec.current != nil && ec.current.ts.Equal(currentTs) {
+		return ec.current
 	}
 
 	resp := generate()
@@ -97,12 +101,25 @@ func getCachedResponse(endpoint string, etag string, generate func() JsonRespons
 	gz.Write(resp.Content)
 	gz.Close()
 
-	entry := &cachedResponse{
-		etag:         resp.ETag,
-		lastModified: resp.LastModified,
-		raw:          resp.Content,
-		gzipped:      buf.Bytes(),
+	ec.current = &cachedResponse{
+		ts:      currentTs,
+		etag:    resp.ETag,
+		raw:     resp.Content,
+		gzipped: buf.Bytes(),
 	}
-	jsonCache[endpoint] = entry
-	return entry
+
+	return ec.current
+}
+
+func getEndpointCache(endpoint string) *endpointCache {
+	registryMu.Lock()
+	defer registryMu.Unlock()
+
+	ec := cacheRegistry[endpoint]
+	if ec == nil {
+		ec = &endpointCache{}
+		cacheRegistry[endpoint] = ec
+	}
+
+	return ec
 }
