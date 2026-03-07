@@ -110,7 +110,7 @@ func loadGeoCache() (*GeoCache, error) {
 	log.Infof("Loaded geolocation cache: %d items", len(cache.Entries))
 
 	if *noGeoLocation != "" {
-		for _, netStr := range strings.Split(*noGeoLocation, ",") {
+		for netStr := range strings.SplitSeq(*noGeoLocation, ",") {
 			netStr = strings.TrimSpace(netStr)
 			if len(netStr) > 0 {
 				_, net, err := net.ParseCIDR(netStr)
