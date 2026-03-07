@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -135,23 +136,38 @@ func vastApiCallRaw(endpoint string, args url.Values, timeout time.Duration) ([]
 	if *apiKey != "" {
 		args.Set("api_key", *apiKey)
 	}
-	client := &http.Client{Timeout: timeout}
+
 	start := time.Now()
+
+	client := &http.Client{Timeout: timeout}
 	url := "https://console.vast.ai/api/v0/" + endpoint + "/?" + args.Encode()
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
+
 	if resp.StatusCode != 200 {
 		logErrorBody(body)
+		if metrics != nil {
+			metrics.ObserveAPIError(endpoint, strconv.Itoa(resp.StatusCode))
+		}
 		return nil, fmt.Errorf("endpoint /%s returned: %s", endpoint, resp.Status)
 	}
-	log.Infoln("GET", url, "took", time.Since(start))
+
+	elapsed := time.Since(start)
+	log.Infoln("GET", url, "took", elapsed)
+
+	if metrics != nil {
+		metrics.ObserveAPIDuration(endpoint, elapsed.Seconds())
+		metrics.ObserveAPIResponseSize(endpoint, len(body))
+	}
+
 	return body, nil
 }
 

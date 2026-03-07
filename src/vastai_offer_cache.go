@@ -26,6 +26,12 @@ func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 		cache.machines = cache.wholeMachineRawOffers.decode()
 		cache.ts = apiRes.ts
 		cache.etag = computeETag(cache.ts)
+
+		if metrics != nil {
+			hosts := cache.wholeMachineRawOffers.getHosts()
+			metrics.UpdateCounts(len(cache.rawOffers), len(cache.wholeMachineRawOffers), len(hosts))
+		}
+
 		if geoCache != nil {
 			geoCache.save()
 		}

@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,24 +22,39 @@ type VastAiRawOffers []VastAiRawOffer
 
 func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 	url := strings.TrimRight(masterUrl, "/") + "/offers"
+
+	start := time.Now()
+
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
 		return err
 	}
+
 	if resp.StatusCode != 200 {
+		if metrics != nil {
+			metrics.ObserveAPIError("master/offers", strconv.Itoa(resp.StatusCode))
+		}
 		return fmt.Errorf(`URL %s returned "%s"`, url, resp.Status)
 	}
 	defer resp.Body.Close()
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+
+	if metrics != nil {
+		metrics.ObserveAPIDuration("master/offers", time.Since(start).Seconds())
+		metrics.ObserveAPIResponseSize("master/offers", len(body))
+	}
+
 	var j RawOffersResponse
 	err = json.Unmarshal(body, &j)
 	if err != nil {
 		return err
 	}
+
 	if j.Url != "/offers" {
 		return fmt.Errorf("not a Vast.ai exporter URL: %s", masterUrl)
 	}

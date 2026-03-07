@@ -43,9 +43,11 @@ var (
 	).PlaceHolder("IP[/NN],IP[/NN],...").String()
 )
 
-func metricsHandler(w http.ResponseWriter, r *http.Request, collector prometheus.Collector) {
+func metricsHandler(w http.ResponseWriter, r *http.Request, collectors ...prometheus.Collector) {
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(collector)
+	for _, c := range collectors {
+		registry.MustRegister(c)
+	}
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
 }
@@ -74,6 +76,8 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	metrics = newExporterMetrics()
 
 	log.Infoln("Reading initial Vast.ai info (may take a minute)")
 
@@ -122,18 +126,20 @@ func main() {
 		// json for geomap
 		jsonHandler(w, r, offerCache.hostMapJson())
 	})
+
 	http.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {
 		// global stats
-		metricsHandler(w, r, vastAiGlobalCollector)
+		metricsHandler(w, r, vastAiGlobalCollector, metrics)
 	})
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		// account stats (if api key is specified)
 		if useAccount {
-			metricsHandler(w, r, vastAiAccountCollector)
+			metricsHandler(w, r, vastAiAccountCollector, metrics)
 		} else {
-			metricsHandler(w, r, vastAiGlobalCollector)
+			metricsHandler(w, r, vastAiGlobalCollector, metrics)
 		}
 	})
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// index page
 		if r.URL.Path != "/" {
