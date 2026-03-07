@@ -40,6 +40,7 @@ type HostMapResponse struct {
 }
 
 func (cache *OfferCache) hostMapJson() JsonResponse {
+	defer timeStage("json_host_map")()
 	hosts := cache.wholeMachineRawOffers.getHosts()
 
 	mapItems := make(HostMapItems, 0, len(hosts))

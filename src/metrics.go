@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -15,18 +17,22 @@ type ExporterMetrics struct {
 	apiResponseSizeBytes      *prometheus.GaugeVec
 	apiBytesRead              *prometheus.CounterVec
 
-	serverResponseSizeBytes  *prometheus.GaugeVec
-	serverBytesWritten       *prometheus.CounterVec
-	serverRequestsTotal      *prometheus.CounterVec
-	serverNotModifiedTotal   *prometheus.CounterVec
+	serverResponseSizeBytes *prometheus.GaugeVec
+	serverBytesWritten      *prometheus.CounterVec
+	serverRequestsTotal     *prometheus.CounterVec
+	serverNotModifiedTotal  *prometheus.CounterVec
 
 	apiErrorsTotal *prometheus.CounterVec
+
+	processDurationSeconds *prometheus.GaugeVec
+	processSecondsTotal    *prometheus.CounterVec
 }
 
 func newExporterMetrics() *ExporterMetrics {
 	namespace := "vastai_exporter"
 	subsystemAPI := "api"
 	subsystemServer := "server"
+	subsystemProcess := "process"
 
 	return &ExporterMetrics{
 		offerCount: prometheus.NewGauge(prometheus.GaugeOpts{
@@ -95,6 +101,19 @@ func newExporterMetrics() *ExporterMetrics {
 			Name:      "errors_total",
 			Help:      "Total number of API request errors by status code.",
 		}, []string{"endpoint", "status"}),
+
+		processDurationSeconds: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: subsystemProcess,
+			Name:      "duration_seconds",
+			Help:      "Duration of the last processing run in seconds.",
+		}, []string{"stage"}),
+		processSecondsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subsystemProcess,
+			Name:      "seconds_total",
+			Help:      "Total CPU seconds spent in processing.",
+		}, []string{"stage"}),
 	}
 }
 
@@ -113,6 +132,9 @@ func (m *ExporterMetrics) Describe(ch chan<- *prometheus.Desc) {
 	m.serverNotModifiedTotal.Describe(ch)
 
 	m.apiErrorsTotal.Describe(ch)
+
+	m.processDurationSeconds.Describe(ch)
+	m.processSecondsTotal.Describe(ch)
 }
 
 func (m *ExporterMetrics) Collect(ch chan<- prometheus.Metric) {
@@ -130,6 +152,9 @@ func (m *ExporterMetrics) Collect(ch chan<- prometheus.Metric) {
 	m.serverNotModifiedTotal.Collect(ch)
 
 	m.apiErrorsTotal.Collect(ch)
+
+	m.processDurationSeconds.Collect(ch)
+	m.processSecondsTotal.Collect(ch)
 }
 
 func (m *ExporterMetrics) ObserveAPIDuration(endpoint string, seconds float64) {
@@ -160,4 +185,17 @@ func (m *ExporterMetrics) UpdateCounts(offers, machines, hosts int) {
 	m.offerCount.Set(float64(offers))
 	m.machineCount.Set(float64(machines))
 	m.hostCount.Set(float64(hosts))
+}
+
+func (m *ExporterMetrics) ObserveProcessing(stage string, d time.Duration) {
+	seconds := d.Seconds()
+	m.processDurationSeconds.WithLabelValues(stage).Set(seconds)
+	m.processSecondsTotal.WithLabelValues(stage).Add(seconds)
+}
+
+func (m *ExporterMetrics) TimeProcessing(stage string) func() {
+	start := time.Now()
+	return func() {
+		m.ObserveProcessing(stage, time.Since(start))
+	}
 }

@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+func timeStage(stage string) func() {
+	if metrics != nil {
+		return metrics.TimeProcessing(stage)
+	}
+	return func() {}
+}
+
 type OfferCache struct {
 	rawOffers             VastAiRawOffers
 	wholeMachineRawOffers VastAiRawOffers
@@ -21,14 +28,25 @@ var offerCache OfferCache
 
 func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 	if apiRes.offers != nil {
+		done := timeStage("validate_dedupe")
 		cache.rawOffers = (*apiRes.offers).validate().dedupe()
+		done()
+
+		done = timeStage("collect_whole_machines")
 		cache.wholeMachineRawOffers = cache.rawOffers.collectWholeMachines(cache.wholeMachineRawOffers)
+		done()
+
+		done = timeStage("decode")
 		cache.machines = cache.wholeMachineRawOffers.decode()
+		done()
+
 		cache.ts = apiRes.ts
 		cache.etag = computeETag(cache.ts)
 
 		if metrics != nil {
+			done = timeStage("get_hosts")
 			hosts := cache.wholeMachineRawOffers.getHosts()
+			done()
 			metrics.UpdateCounts(len(cache.rawOffers), len(cache.wholeMachineRawOffers), len(hosts))
 		}
 
@@ -55,6 +73,11 @@ type RawOffersResponse struct {
 }
 
 func (cache *OfferCache) rawOffersJson(wholeMachines bool) JsonResponse {
+	if wholeMachines {
+		defer timeStage("json_machines")()
+	} else {
+		defer timeStage("json_offers")()
+	}
 	var offers *VastAiRawOffers
 	url := "/offers"
 	if wholeMachines {
@@ -95,6 +118,7 @@ type GpuStatsResponse struct {
 }
 
 func (cache *OfferCache) gpuStatsJson() JsonResponse {
+	defer timeStage("json_gpu_stats")()
 	groupedOffers := cache.machines.groupByGpu()
 	result := GpuStatsResponse{
 		Url:       "/gpu-stats",

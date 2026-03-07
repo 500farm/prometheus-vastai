@@ -34,6 +34,7 @@ type HostsResponse struct {
 }
 
 func (cache *OfferCache) hostsJson() JsonResponse {
+	defer timeStage("json_hosts")()
 	hosts := cache.wholeMachineRawOffers.getHosts()
 
 	result, err := json.MarshalIndent(HostsResponse{
