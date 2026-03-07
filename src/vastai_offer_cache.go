@@ -1,9 +1,10 @@
 package main
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/prometheus/common/log"
@@ -114,8 +115,8 @@ func (cache *OfferCache) gpuStatsJson() JsonResponse {
 		})
 	}
 
-	sort.Slice(result.Models, func(i, j int) bool {
-		return result.Models[i].Stats.All.All.Count > result.Models[j].Stats.All.All.Count
+	slices.SortFunc(result.Models, func(a, b GpuStatsModel) int {
+		return cmp.Compare(b.Stats.All.All.Count, a.Stats.All.All.Count)
 	})
 
 	j, err := json.MarshalIndent(result, "", "    ")

@@ -1,13 +1,12 @@
 package main
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
-	"sort"
+	"slices"
 	"strconv"
 	"time"
-
-	"github.com/mpvl/unique"
 	"github.com/prometheus/common/log"
 )
 
@@ -85,17 +84,17 @@ func (offers VastAiRawOffers) getHosts() Hosts {
 
 	result2 := make(Hosts, 0, len(result))
 	for _, item := range result {
-		sort.Ints(item.MachineIds)
-		unique.Ints(&item.MachineIds)
+		slices.Sort(item.MachineIds)
+		item.MachineIds = slices.Compact(item.MachineIds)
 
-		sort.Strings(item.IpAddresses)
-		unique.Strings(&item.IpAddresses)
+		slices.Sort(item.IpAddresses)
+		item.IpAddresses = slices.Compact(item.IpAddresses)
 
 		result2 = append(result2, item)
 	}
 
-	sort.Slice(result2, func(i, j int) bool {
-		return result2[i].Tflops > result2[j].Tflops
+	slices.SortFunc(result2, func(a, b Host) int {
+		return cmp.Compare(b.Tflops, a.Tflops)
 	})
 
 	return result2

@@ -1,10 +1,11 @@
 package main
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -91,13 +92,11 @@ func (m GpuCounts) String() string {
 	for name, count := range m {
 		gpus = append(gpus, Gpu{name: name, count: count})
 	}
-	sort.Slice(gpus, func(i, j int) bool {
-		c1 := gpus[i].count
-		c2 := gpus[j].count
-		if c1 == c2 {
-			return gpus[i].name < gpus[j].name
+	slices.SortFunc(gpus, func(a, b Gpu) int {
+		if c := cmp.Compare(b.count, a.count); c != 0 {
+			return c
 		}
-		return c1 > c2
+		return cmp.Compare(a.name, b.name)
 	})
 	strs := make([]string, 0, len(gpus))
 	for _, gpu := range gpus {

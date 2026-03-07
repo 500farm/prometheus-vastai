@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -183,8 +183,11 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 				gpuIds:   *offer.gpuIds(),
 			})
 		}
-		sort.Slice(chunks, func(i, j int) bool {
-			return chunks[i].size*1e12+chunks[i].offerId < chunks[j].size*1e12+chunks[j].offerId
+		slices.SortFunc(chunks, func(a, b Chunk) int {
+			if c := cmp.Compare(a.size, b.size); c != 0 {
+				return c
+			}
+			return cmp.Compare(a.offerId, b.offerId)
 		})
 
 		// - find offer corresponding to the whole machine
@@ -322,8 +325,8 @@ func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) V
 		result = append(result, newOffer)
 	}
 
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].machineId() > result[j].machineId()
+	slices.SortFunc(result, func(a, b VastAiRawOffer) int {
+		return cmp.Compare(b.machineId(), a.machineId())
 	})
 
 	return result
