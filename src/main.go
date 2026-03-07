@@ -112,11 +112,11 @@ func main() {
 
 	http.HandleFunc("/offers", func(w http.ResponseWriter, r *http.Request) {
 		snap := offerCache.Snapshot()
-		jsonHandler(w, r, snap.ts, func() JsonResponse { return snap.rawOffersJson(false) })
+		jsonHandler(w, r, snap.ts, snap.rawOffersJson)
 	})
 	http.HandleFunc("/machines", func(w http.ResponseWriter, r *http.Request) {
 		snap := offerCache.Snapshot()
-		jsonHandler(w, r, snap.ts, func() JsonResponse { return snap.rawOffersJson(true) })
+		jsonHandler(w, r, snap.ts, snap.wholeMachinesJson)
 	})
 	http.HandleFunc("/hosts", func(w http.ResponseWriter, r *http.Request) {
 		snap := offerCache.Snapshot()
