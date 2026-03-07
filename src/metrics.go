@@ -24,7 +24,7 @@ type ExporterMetrics struct {
 }
 
 func newExporterMetrics() *ExporterMetrics {
-	namespace := "vastai"
+	namespace := "vastai_exporter"
 	subsystemAPI := "api"
 	subsystemServer := "server"
 
