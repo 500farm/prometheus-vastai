@@ -39,7 +39,7 @@ type HostMapResponse struct {
 	Items HostMapItems `json:"items"`
 }
 
-func (cache *OfferCache) hostMapJson() []byte {
+func (cache *OfferCache) hostMapJson() JsonResponse {
 	hosts := cache.wholeMachineRawOffers.getHosts()
 
 	mapItems := make(HostMapItems, 0, len(hosts))
@@ -55,9 +55,9 @@ func (cache *OfferCache) hostMapJson() []byte {
 	}, "", "    ")
 	if err != nil {
 		log.Errorln(err)
-		return nil
+		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag}
 	}
-	return result
+	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag}
 }
 
 func (host *Host) mapItem() *HostMapItem {

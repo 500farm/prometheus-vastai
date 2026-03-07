@@ -14,6 +14,7 @@ type OfferCache struct {
 	wholeMachineRawOffers VastAiRawOffers
 	machines              VastAiOffers
 	ts                    time.Time
+	etag                  string
 }
 
 var offerCache OfferCache
@@ -24,6 +25,7 @@ func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 		cache.wholeMachineRawOffers = cache.rawOffers.collectWholeMachines(cache.wholeMachineRawOffers)
 		cache.machines = cache.wholeMachineRawOffers.decode()
 		cache.ts = apiRes.ts
+		cache.etag = computeETag(cache.ts)
 		if geoCache != nil {
 			geoCache.save()
 		}
@@ -46,7 +48,7 @@ type RawOffersResponse struct {
 	Offers    *VastAiRawOffers `json:"offers"`
 }
 
-func (cache *OfferCache) rawOffersJson(wholeMachines bool) []byte {
+func (cache *OfferCache) rawOffersJson(wholeMachines bool) JsonResponse {
 	var offers *VastAiRawOffers
 	url := "/offers"
 	if wholeMachines {
@@ -68,9 +70,9 @@ func (cache *OfferCache) rawOffersJson(wholeMachines bool) []byte {
 	}, "", "    ")
 	if err != nil {
 		log.Errorln(err)
-		return nil
+		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag}
 	}
-	return result
+	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag}
 }
 
 type GpuStatsModel struct {
@@ -86,7 +88,7 @@ type GpuStatsResponse struct {
 	Models    []GpuStatsModel `json:"models"`
 }
 
-func (cache *OfferCache) gpuStatsJson() []byte {
+func (cache *OfferCache) gpuStatsJson() JsonResponse {
 	groupedOffers := cache.machines.groupByGpu()
 	result := GpuStatsResponse{
 		Url:       "/gpu-stats",
@@ -113,7 +115,7 @@ func (cache *OfferCache) gpuStatsJson() []byte {
 	j, err := json.MarshalIndent(result, "", "    ")
 	if err != nil {
 		log.Errorln(err)
-		return []byte("{}")
+		return JsonResponse{Content: []byte("{}"), LastModified: cache.ts, ETag: cache.etag}
 	}
-	return j
+	return JsonResponse{Content: j, LastModified: cache.ts, ETag: cache.etag}
 }

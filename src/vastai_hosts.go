@@ -35,7 +35,7 @@ type HostsResponse struct {
 	Hosts     *Hosts    `json:"hosts"`
 }
 
-func (cache *OfferCache) hostsJson() []byte {
+func (cache *OfferCache) hostsJson() JsonResponse {
 	hosts := cache.wholeMachineRawOffers.getHosts()
 
 	result, err := json.MarshalIndent(HostsResponse{
@@ -47,9 +47,9 @@ func (cache *OfferCache) hostsJson() []byte {
 	}, "", "    ")
 	if err != nil {
 		log.Errorln(err)
-		return nil
+		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag}
 	}
-	return result
+	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag}
 }
 
 func (offers VastAiRawOffers) getHosts() Hosts {
