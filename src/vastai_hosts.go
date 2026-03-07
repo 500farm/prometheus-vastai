@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strconv"
 	"time"
-	"github.com/prometheus/common/log"
 )
 
 type GpuCounts map[string]int

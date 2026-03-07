@@ -5,8 +5,6 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-
-	"github.com/prometheus/common/log"
 )
 
 type VastAiInvoices struct {

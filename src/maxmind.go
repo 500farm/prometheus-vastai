@@ -12,8 +12,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"github.com/prometheus/common/log"
 )
 
 type GeoLocation struct {

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/aquilax/truncate"
-	"github.com/prometheus/common/log"
 )
 
 type VastAiApiResults struct {

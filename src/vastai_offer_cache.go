@@ -6,8 +6,6 @@ import (
 	"errors"
 	"slices"
 	"time"
-
-	"github.com/prometheus/common/log"
 )
 
 type OfferCache struct {

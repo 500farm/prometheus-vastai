@@ -8,8 +8,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-
-	"github.com/prometheus/common/log"
 )
 
 type MapLocation struct {

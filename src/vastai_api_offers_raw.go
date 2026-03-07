@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-set/v2"
-	"github.com/prometheus/common/log"
 )
 
 type VastAiRawOffer map[string]any
