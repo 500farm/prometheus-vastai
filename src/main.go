@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -42,6 +43,14 @@ var (
 		"no-geolocation",
 		"Exculde IP ranges from geolocation",
 	).PlaceHolder("IP[/NN],IP[/NN],...").String()
+	downloadTestDataFlag = kingpin.Flag(
+		"download-test-data",
+		"Download raw API data to state-dir/test-data/ and exit.",
+	).Bool()
+	testParsingFlag = kingpin.Flag(
+		"test-parsing",
+		"Parse test data from state-dir/test-data/, write outputs to state-dir/test-output/, and exit.",
+	).Bool()
 )
 
 var (
@@ -67,18 +76,35 @@ func main() {
 
 	log.SetFlags(0)
 
-	if *apiKey == "" {
-		log.Fatalln("API key is required")
-	}
-
-	log.Println("INFO: Starting vast.ai exporter")
-
 	if *stateDir == "" {
 		*stateDir = os.Getenv("HOME")
 	}
 	if *stateDir == "" {
 		*stateDir = "/tmp"
 	}
+
+	// "download test data" mode: fetch from API, save to files, exit.
+	if *downloadTestDataFlag {
+		if *apiKey == "" {
+			log.Fatalln("API key is required for --download-test-data")
+		}
+		downloadTestData()
+		return
+	}
+
+	// "test parsing mode": redirect all API calls to saved files.
+	if *testParsingFlag {
+		testDataSource = filepath.Join(*stateDir, "test-data")
+		if *apiKey == "" {
+			*apiKey = "test"
+		}
+	}
+
+	if *apiKey == "" {
+		log.Fatalln("API key is required")
+	}
+
+	log.Println("INFO: Starting vast.ai exporter")
 
 	// load or init geolocation cache (will be nil if MaxMind key is not supploid)
 	var err error
@@ -118,27 +144,29 @@ func main() {
 		log.Println("INFO: No Vast.ai API key provided, only serving global stats")
 	}
 
-	http.HandleFunc("/offers", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/offers", func(w http.ResponseWriter, r *http.Request) {
 		jsonHandler(w, r, offerCache.Snapshot().Offers())
 	})
-	http.HandleFunc("/machines", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/machines", func(w http.ResponseWriter, r *http.Request) {
 		jsonHandler(w, r, offerCache.Snapshot().Machines())
 	})
-	http.HandleFunc("/hosts", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/hosts", func(w http.ResponseWriter, r *http.Request) {
 		jsonHandler(w, r, offerCache.Snapshot().Hosts())
 	})
-	http.HandleFunc("/gpu-stats", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/gpu-stats", func(w http.ResponseWriter, r *http.Request) {
 		jsonHandler(w, r, offerCache.Snapshot().GpuStats())
 	})
-	http.HandleFunc("/host-map-data", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/host-map-data", func(w http.ResponseWriter, r *http.Request) {
 		jsonHandler(w, r, offerCache.Snapshot().HostMapData())
 	})
 
-	http.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {
 		// global stats
 		metricsHandler(w, r, vastAiGlobalCollector, metrics)
 	})
-	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		// account stats (if api key is specified)
 		if useAccount {
 			metricsHandler(w, r, vastAiAccountCollector, metrics)
@@ -147,7 +175,7 @@ func main() {
 		}
 	})
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// index page
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
@@ -166,6 +194,12 @@ func main() {
 		w.Write([]byte(`</body></html>`))
 	})
 
+	// "test parsing mode": fetch all endpoints to files and exit.
+	if *testParsingFlag {
+		testFetchAllEndpoints(mux)
+		return
+	}
+
 	go func() {
 		for {
 			time.Sleep(*updateInterval)
@@ -180,5 +214,5 @@ func main() {
 	}()
 
 	log.Println("INFO: Listening on", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+	log.Fatal(http.ListenAndServe(*listenAddress, mux))
 }
