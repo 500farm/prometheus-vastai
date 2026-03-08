@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"runtime"
 	"sync"
+
+	jsonv2 "github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
 )
 
 func numWorkers() int {
@@ -30,50 +32,62 @@ func parallelDo(total, workers int, fn func(w, start, end int)) {
 	wg.Wait()
 }
 
-func (s VastAiRawOffers) MarshalJSON() ([]byte, error) {
-	if len(s) == 0 {
-		return []byte("[]"), nil
+func jsonMarshalV2(v any) ([]byte, error) {
+	return jsonv2.Marshal(v,
+		jsontext.WithIndent("    "),
+		jsonv2.Deterministic(true),
+		jsontext.AllowDuplicateNames(true),
+	)
+}
+
+func (s *VastAiRawOffers) MarshalJSONTo(enc *jsontext.Encoder) error {
+	offers := *s
+
+	if s == nil || len(offers) == 0 {
+		if err := enc.WriteToken(jsontext.BeginArray); err != nil {
+			return err
+		}
+		return enc.WriteToken(jsontext.EndArray)
 	}
 
 	workers := 1
-	if len(s) >= 100 {
+	if len(offers) >= 100 {
 		workers = numWorkers()
 	}
 
-	chunks := make([][]byte, workers)
-	errs := make([]error, workers)
+	type marshaledElement struct {
+		data []byte
+		err  error
+	}
 
-	parallelDo(len(s), workers, func(w, start, end int) {
-		var buf bytes.Buffer
+	elements := make([]marshaledElement, len(offers))
+
+	parallelDo(len(offers), workers, func(w, start, end int) {
 		for i := start; i < end; i++ {
-			if i > start {
-				buf.WriteByte(',')
-			}
-			b, err := json.Marshal(s[i])
-			if err != nil {
-				errs[w] = err
-				return
-			}
-			buf.Write(b)
+			data, err := jsonv2.Marshal(offers[i],
+				jsonv2.Deterministic(true),
+				jsontext.AllowDuplicateNames(true),
+			)
+			elements[i] = marshaledElement{data: data, err: err}
 		}
-		chunks[w] = buf.Bytes()
 	})
 
-	for _, err := range errs {
-		if err != nil {
-			return nil, err
+	if err := enc.WriteToken(jsontext.BeginArray); err != nil {
+		return err
+	}
+
+	for i := range elements {
+		if elements[i].err != nil {
+			return elements[i].err
+		}
+		if err := enc.WriteValue(elements[i].data); err != nil {
+			return err
 		}
 	}
 
-	inner := bytes.Join(chunks, []byte{','})
-	out := make([]byte, 0, len(inner)+2)
-	out = append(out, '[')
-	out = append(out, inner...)
-	out = append(out, ']')
-	return out, nil
+	return enc.WriteToken(jsontext.EndArray)
 }
 
-// Gzip streams are concatenable per RFC 1952
 func parallelGzip(data []byte) []byte {
 	if len(data) == 0 {
 		return emptyGzip()
@@ -96,10 +110,7 @@ func parallelGzip(data []byte) []byte {
 
 	out := bytes.Join(chunks, nil)
 	if len(out) == 0 {
-		var buf bytes.Buffer
-		gz, _ := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
-		gz.Close()
-		return buf.Bytes()
+		return emptyGzip()
 	}
 	return out
 }

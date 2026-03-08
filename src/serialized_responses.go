@@ -3,12 +3,11 @@ package main
 import (
 	"cmp"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"log"
 	"slices"
 	"time"
-
-	"encoding/json"
 )
 
 type SerializedResponses map[string]*CachedResponse
@@ -80,12 +79,12 @@ func buildCachedResponse(ts time.Time, endpoint string, jsonBytes []byte) *Cache
 func serializeOffers(rawOffers VastAiRawOffers, ts time.Time) *CachedResponse {
 	defer timeStage("json_offers")()
 
-	result, err := json.MarshalIndent(RawOffersResponse{
+	result, err := jsonMarshalV2(RawOffersResponse{
 		Url:       "/offers",
 		Timestamp: ts.UTC(),
 		Count:     len(rawOffers),
 		Offers:    &rawOffers,
-	}, "", "    ")
+	})
 
 	if err != nil {
 		log.Println("ERROR:", err)
@@ -98,13 +97,13 @@ func serializeOffers(rawOffers VastAiRawOffers, ts time.Time) *CachedResponse {
 func serializeMachines(wholeMachineRawOffers VastAiRawOffers, ts time.Time) *CachedResponse {
 	defer timeStage("json_machines")()
 
-	result, err := json.MarshalIndent(RawOffersResponse{
+	result, err := jsonMarshalV2(RawOffersResponse{
 		Url:       "/machines",
 		Timestamp: ts.UTC(),
 		Count:     len(wholeMachineRawOffers),
 		Note:      "Sorted from newest to oldest.",
 		Offers:    &wholeMachineRawOffers,
-	}, "", "    ")
+	})
 
 	if err != nil {
 		log.Println("ERROR:", err)
