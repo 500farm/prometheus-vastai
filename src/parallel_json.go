@@ -62,10 +62,28 @@ func jsonMarshalV2(v any) ([]byte, error) {
 	return append([]byte(nil), jsonBuf.Bytes()...), nil
 }
 
-func (s *VastAiRawOffers) MarshalJSONTo(enc *jsontext.Encoder) error {
+func (s *VastAiOffers) MarshalJSONTo(enc *jsontext.Encoder) error {
+	if s == nil {
+		return marshalArray(enc, 0, nil)
+	}
 	offers := *s
+	return marshalArray(enc, len(offers), func(i int) any {
+		return offers[i].Raw
+	})
+}
 
-	if s == nil || len(offers) == 0 {
+func (s *VastAiMachineOffers) MarshalJSONTo(enc *jsontext.Encoder) error {
+	if s == nil {
+		return marshalArray(enc, 0, nil)
+	}
+	machines := *s
+	return marshalArray(enc, len(machines), func(i int) any {
+		return machines[i].asRaw()
+	})
+}
+
+func marshalArray(enc *jsontext.Encoder, count int, get func(i int) any) error {
+	if count == 0 {
 		if err := enc.WriteToken(jsontext.BeginArray); err != nil {
 			return err
 		}
@@ -73,7 +91,7 @@ func (s *VastAiRawOffers) MarshalJSONTo(enc *jsontext.Encoder) error {
 	}
 
 	workers := 1
-	if len(offers) >= 100 {
+	if count >= 100 {
 		workers = numWorkers()
 	}
 
@@ -82,15 +100,15 @@ func (s *VastAiRawOffers) MarshalJSONTo(enc *jsontext.Encoder) error {
 		err  error
 	}
 
-	elements := make([]marshaledElement, len(offers))
+	elements := make([]marshaledElement, count)
 
-	parallelDo(len(offers), workers, func(w, start, end int) {
+	parallelDo(count, workers, func(w, start, end int) {
 		buf := elemBufPool.Get().(*bytes.Buffer)
 		defer elemBufPool.Put(buf)
 		for i := start; i < end; i++ {
 			buf.Reset()
 			elemEnc := jsontext.NewEncoder(buf, jsontext.AllowDuplicateNames(true))
-			err := jsonv2.MarshalEncode(elemEnc, offers[i], jsonv2.Deterministic(true))
+			err := jsonv2.MarshalEncode(elemEnc, get(i), jsonv2.Deterministic(true))
 			elements[i] = marshaledElement{
 				data: append([]byte(nil), buf.Bytes()...),
 				err:  err,

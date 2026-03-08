@@ -12,40 +12,18 @@ import (
 
 type SerializedResponses map[string]*CachedResponse
 
-type RawOffersResponse struct {
-	Url       string           `json:"url"`
-	Timestamp time.Time        `json:"timestamp"`
-	Count     int              `json:"count"`
-	Notes     []string         `json:"notes,omitempty"`
-	Offers    *VastAiRawOffers `json:"offers"`
-}
-
-type GpuStatsModel struct {
-	Name  string      `json:"name"`
-	Stats OfferStats3 `json:"stats"`
-	Info  GpuInfo     `json:"info"`
-}
-
-type GpuStatsResponse struct {
-	Url       string          `json:"url"`
-	Timestamp time.Time       `json:"timestamp"`
-	Note      string          `json:"note,omitempty"`
-	Models    []GpuStatsModel `json:"models"`
-}
-
 func NewSerializedResponses(
-	rawOffers VastAiRawOffers,
-	wholeMachineRawOffers VastAiRawOffers,
-	machines VastAiOffers,
+	offers VastAiOffers,
+	machines VastAiMachineOffers,
 	ts time.Time,
 ) SerializedResponses {
 	responses := make(SerializedResponses, 5)
 
-	responses["/offers"] = serializeOffers(rawOffers, ts)
-	responses["/machines"] = serializeMachines(wholeMachineRawOffers, ts)
-	responses["/hosts"] = serializeHosts(wholeMachineRawOffers, ts)
+	responses["/offers"] = serializeOffers(&offers, ts)
+	responses["/machines"] = serializeMachines(&machines, ts)
+	responses["/hosts"] = serializeHosts(machines, ts)
 	responses["/gpu-stats"] = serializeGpuStats(machines, ts)
-	responses["/host-map-data"] = serializeHostMap(wholeMachineRawOffers, ts)
+	responses["/host-map-data"] = serializeHostMap(machines, ts)
 
 	return responses
 }
@@ -76,18 +54,26 @@ func buildCachedResponse(ts time.Time, endpoint string, jsonBytes []byte) *Cache
 	return resp
 }
 
-func serializeOffers(rawOffers VastAiRawOffers, ts time.Time) *CachedResponse {
+type OffersResponse struct {
+	Url       string    `json:"url"`
+	Timestamp time.Time `json:"timestamp"`
+	Count     int       `json:"count"`
+	Notes     []string  `json:"notes,omitempty"`
+	Offers    any       `json:"offers"`
+}
+
+func serializeOffers(offers *VastAiOffers, ts time.Time) *CachedResponse {
 	defer timeStage("json_offers")()
 
-	result, err := jsonMarshalV2(RawOffersResponse{
+	result, err := jsonMarshalV2(OffersResponse{
 		Url:       "/offers",
 		Timestamp: ts.UTC(),
-		Count:     len(rawOffers),
+		Count:     len(*offers),
 		Notes: []string{
 			"Use Accept-Encoding: gzip for faster transfers.",
 			"Use If-None-Match or If-Modified-Since to avoid redundant downloads.",
 		},
-		Offers: &rawOffers,
+		Offers: offers,
 	})
 
 	if err != nil {
@@ -98,19 +84,19 @@ func serializeOffers(rawOffers VastAiRawOffers, ts time.Time) *CachedResponse {
 	return buildCachedResponse(ts, "/offers", result)
 }
 
-func serializeMachines(wholeMachineRawOffers VastAiRawOffers, ts time.Time) *CachedResponse {
+func serializeMachines(machines *VastAiMachineOffers, ts time.Time) *CachedResponse {
 	defer timeStage("json_machines")()
 
-	result, err := jsonMarshalV2(RawOffersResponse{
+	result, err := jsonMarshalV2(OffersResponse{
 		Url:       "/machines",
 		Timestamp: ts.UTC(),
-		Count:     len(wholeMachineRawOffers),
+		Count:     len(*machines),
 		Notes: []string{
 			"Sorted from newest to oldest.",
 			"Use Accept-Encoding: gzip for faster transfers.",
 			"Use If-None-Match or If-Modified-Since to avoid redundant downloads.",
 		},
-		Offers: &wholeMachineRawOffers,
+		Offers: machines,
 	})
 
 	if err != nil {
@@ -121,10 +107,10 @@ func serializeMachines(wholeMachineRawOffers VastAiRawOffers, ts time.Time) *Cac
 	return buildCachedResponse(ts, "/machines", result)
 }
 
-func serializeHosts(wholeMachineRawOffers VastAiRawOffers, ts time.Time) *CachedResponse {
+func serializeHosts(machines VastAiMachineOffers, ts time.Time) *CachedResponse {
 	defer timeStage("json_hosts")()
 
-	hosts := wholeMachineRawOffers.getHosts()
+	hosts := machines.getHosts()
 
 	result, err := json.MarshalIndent(HostsResponse{
 		Url:       "/hosts",
@@ -141,7 +127,20 @@ func serializeHosts(wholeMachineRawOffers VastAiRawOffers, ts time.Time) *Cached
 	return buildCachedResponse(ts, "/hosts", result)
 }
 
-func serializeGpuStats(machines VastAiOffers, ts time.Time) *CachedResponse {
+type GpuStatsModel struct {
+	Name  string        `json:"name"`
+	Stats MachineStats3 `json:"stats"`
+	Info  GpuInfo       `json:"info"`
+}
+
+type GpuStatsResponse struct {
+	Url       string          `json:"url"`
+	Timestamp time.Time       `json:"timestamp"`
+	Note      string          `json:"note,omitempty"`
+	Models    []GpuStatsModel `json:"models"`
+}
+
+func serializeGpuStats(machines VastAiMachineOffers, ts time.Time) *CachedResponse {
 	result := prepareGpuStats(machines, ts)
 
 	defer timeStage("json_gpu_stats")()
@@ -154,7 +153,7 @@ func serializeGpuStats(machines VastAiOffers, ts time.Time) *CachedResponse {
 	return buildCachedResponse(ts, "/gpu-stats", j)
 }
 
-func prepareGpuStats(machines VastAiOffers, ts time.Time) GpuStatsResponse {
+func prepareGpuStats(machines VastAiMachineOffers, ts time.Time) GpuStatsResponse {
 	defer timeStage("calc_gpu_stats")()
 
 	groupedOffers := machines.groupByGpu()
@@ -183,8 +182,8 @@ func prepareGpuStats(machines VastAiOffers, ts time.Time) GpuStatsResponse {
 	return result
 }
 
-func serializeHostMap(wholeMachineRawOffers VastAiRawOffers, ts time.Time) *CachedResponse {
-	mapItems := prepareHostMap(wholeMachineRawOffers)
+func serializeHostMap(machines VastAiMachineOffers, ts time.Time) *CachedResponse {
+	mapItems := prepareHostMap(machines)
 
 	defer timeStage("json_host_map")()
 
@@ -199,10 +198,10 @@ func serializeHostMap(wholeMachineRawOffers VastAiRawOffers, ts time.Time) *Cach
 	return buildCachedResponse(ts, "/host-map-data", result)
 }
 
-func prepareHostMap(wholeMachineRawOffers VastAiRawOffers) HostMapItems {
+func prepareHostMap(machines VastAiMachineOffers) HostMapItems {
 	defer timeStage("calc_host_map")()
 
-	hosts := wholeMachineRawOffers.getHosts()
+	hosts := machines.getHosts()
 
 	mapItems := make(HostMapItems, 0, len(hosts))
 	for _, host := range hosts {

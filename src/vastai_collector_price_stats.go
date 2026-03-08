@@ -92,7 +92,7 @@ func (e *VastAiPriceStatsCollector) Collect(ch chan<- prometheus.Metric) {
 func (e *VastAiPriceStatsCollector) UpdateFrom(offerCache *OfferCacheSnapshot, gpuNames []string) {
 	groupedOffers := offerCache.machines.groupByGpu()
 
-	updateMetrics := func(labels prometheus.Labels, stats OfferStats, needCount bool) {
+	updateMetrics := func(labels prometheus.Labels, stats MachineStats, needCount bool) {
 		if needCount {
 			e.gpu_count.With(labels).Set(float64(stats.Count))
 		}
@@ -140,7 +140,7 @@ func (e *VastAiPriceStatsCollector) UpdateFrom(offerCache *OfferCacheSnapshot, g
 
 	// per-100-dlperf stats
 	if !filterByGpuName {
-		updateMetrics2 := func(labels prometheus.Labels, stats OfferStats) {
+		updateMetrics2 := func(labels prometheus.Labels, stats MachineStats) {
 			if !math.IsNaN(stats.Median) {
 				e.ondemand_price_per_100dlperf_median_dollars.With(labels).Set(stats.Median / 100)
 			} else {

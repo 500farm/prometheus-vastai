@@ -31,32 +31,23 @@ type HostsResponse struct {
 	Hosts     *Hosts    `json:"hosts"`
 }
 
-func (offers VastAiRawOffers) getHosts() Hosts {
-	result := make(map[string]Host, len(offers))
+// getHosts builds host records from whole-machine data.
+func (machines VastAiMachineOffers) getHosts() Hosts {
+	result := make(map[string]Host, len(machines))
 
-	for _, offer := range offers {
+	for _, m := range machines {
 		gpus := make(GpuCounts)
-		gpus[offer.gpuName()] = offer.numGpus()
-
-		hostId, _ := offer["host_id"].(float64)
-		ipAddr, _ := offer["public_ipaddr"].(string)
-		tflops, _ := offer["total_flops"].(float64)
-		inetUp, _ := offer["inet_up"].(float64)
-		inetDown, _ := offer["inet_down"].(float64)
+		gpus[m.GpuName] = m.NumGpus
 
 		item := Host{
-			HostId:      int(hostId),
-			MachineIds:  []int{offer.machineId()},
-			IpAddresses: []string{ipAddr},
+			HostId:      m.HostId,
+			MachineIds:  []int{m.MachineId},
+			IpAddresses: []string{m.IpAddr},
 			Gpus:        gpus,
-			Tflops:      tflops,
-			InetUp:      inetUp,
-			InetDown:    inetDown,
-		}
-
-		location, ok := offer["location"].(*GeoLocation)
-		if ok && (location.Lat != 0 || location.Long != 0) {
-			item.Location = location
+			Tflops:      m.Tflops,
+			InetUp:      m.InetUp,
+			InetDown:    m.InetDown,
+			Location:    m.Location,
 		}
 
 		k := item.mergeKey()
