@@ -19,6 +19,7 @@ type VastAiOffer struct {
 	NumGpus    int
 	DphBase    float64
 	GpuFrac    float64
+	Score      float64
 	Rentable   bool
 	Verified   bool
 	Datacenter bool
@@ -50,6 +51,7 @@ func (raw VastAiRawOffer) decode() (VastAiOffer, bool) {
 	}
 
 	verified, _ := raw["verified"].(bool)
+	score, _ := raw["score"].(float64)
 	dlperf, _ := raw["dlperf"].(float64)
 	tflops, _ := raw["total_flops"].(float64)
 	vram, _ := raw["gpu_ram"].(float64)
@@ -88,6 +90,7 @@ func (raw VastAiRawOffer) decode() (VastAiOffer, bool) {
 		NumGpus:    int(numGpus),
 		DphBase:    dphBase,
 		GpuFrac:    gpuFrac,
+		Score:      score,
 		Rentable:   rentable,
 		Verified:   verified,
 		Datacenter: datacenter,
@@ -114,9 +117,12 @@ func (rawOffers VastAiRawOffers) decode() VastAiOffers {
 		}
 	}
 
-	// sort by id for dedup
+	// sort by id asc, then score desc, so dedup keeps the highest-score copy
 	slices.SortFunc(result, func(a, b VastAiOffer) int {
-		return cmp.Compare(a.Id, b.Id)
+		if c := cmp.Compare(a.Id, b.Id); c != 0 {
+			return c
+		}
+		return cmp.Compare(b.Score, a.Score)
 	})
 
 	// dedupe assuming sorted
