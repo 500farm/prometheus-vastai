@@ -38,9 +38,7 @@ func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 		machines := wholeMachineRawOffers.decode()
 		done()
 
-		done = timeStage("pre_serialize")
 		responses := NewSerializedResponses(rawOffers, wholeMachineRawOffers, machines, apiRes.ts)
-		done()
 
 		cache.mu.Lock()
 		cache.offerCount = len(rawOffers)
