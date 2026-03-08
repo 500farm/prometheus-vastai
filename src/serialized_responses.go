@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"cmp"
 	"crypto/sha256"
 	"encoding/json"
@@ -8,9 +9,14 @@ import (
 	"log"
 	"slices"
 	"time"
+
+	pgzip "github.com/klauspost/pgzip"
 )
 
 type SerializedResponses map[string]*CachedResponse
+
+var offersMarshaler = NewMarshaler()
+var machinesMarshaler = NewMarshaler()
 
 func NewSerializedResponses(
 	offers VastAiOffers,
@@ -31,6 +37,14 @@ func NewSerializedResponses(
 func makeEtag(ts time.Time, endpoint string) string {
 	hash := sha256.Sum256([]byte(ts.Format(time.RFC3339Nano) + "|" + endpoint))
 	return fmt.Sprintf(`"%x"`, hash[:8])
+}
+
+func gzip(data []byte) []byte {
+	var buf bytes.Buffer
+	w, _ := pgzip.NewWriterLevel(&buf, pgzip.DefaultCompression)
+	w.Write(data)
+	w.Close()
+	return buf.Bytes()
 }
 
 func buildCachedResponse(ts time.Time, endpoint string, jsonBytes []byte) *CachedResponse {
@@ -55,25 +69,30 @@ func buildCachedResponse(ts time.Time, endpoint string, jsonBytes []byte) *Cache
 }
 
 type OffersResponse struct {
-	Url       string    `json:"url"`
-	Timestamp time.Time `json:"timestamp"`
-	Count     int       `json:"count"`
-	Notes     []string  `json:"notes,omitempty"`
-	Offers    any       `json:"offers"`
+	Url       string                  `json:"url"`
+	Timestamp time.Time               `json:"timestamp"`
+	Count     int                     `json:"count"`
+	Notes     []string                `json:"notes,omitempty"`
+	Offers    *SerializableCollection `json:"offers"`
 }
 
 func serializeOffers(offers *VastAiOffers, ts time.Time) *CachedResponse {
 	defer timeStage("json_offers")()
 
-	result, err := jsonMarshalV2(OffersResponse{
+	o := *offers
+	raw, gzipped, err := offersMarshaler.Marshal(OffersResponse{
 		Url:       "/offers",
 		Timestamp: ts.UTC(),
-		Count:     len(*offers),
+		Count:     len(o),
 		Notes: []string{
 			"Use Accept-Encoding: gzip for faster transfers.",
 			"Use If-None-Match or If-Modified-Since to avoid redundant downloads.",
 		},
-		Offers: offers,
+		Offers: &SerializableCollection{
+			marshaler: offersMarshaler,
+			count:     len(o),
+			get:       func(i int) any { return o[i].Raw },
+		},
 	})
 
 	if err != nil {
@@ -81,22 +100,30 @@ func serializeOffers(offers *VastAiOffers, ts time.Time) *CachedResponse {
 		return buildCachedResponse(ts, "/offers", nil)
 	}
 
-	return buildCachedResponse(ts, "/offers", result)
+	log.Printf("INFO: Pre-serialized /offers: %d bytes raw, %d bytes gzipped",
+		len(raw), len(gzipped))
+
+	return &CachedResponse{ts: ts, etag: makeEtag(ts, "/offers"), raw: raw, gzipped: gzipped}
 }
 
 func serializeMachines(machines *VastAiMachineOffers, ts time.Time) *CachedResponse {
 	defer timeStage("json_machines")()
 
-	result, err := jsonMarshalV2(OffersResponse{
+	m := *machines
+	raw, gzipped, err := machinesMarshaler.Marshal(OffersResponse{
 		Url:       "/machines",
 		Timestamp: ts.UTC(),
-		Count:     len(*machines),
+		Count:     len(m),
 		Notes: []string{
 			"Sorted from newest to oldest.",
 			"Use Accept-Encoding: gzip for faster transfers.",
 			"Use If-None-Match or If-Modified-Since to avoid redundant downloads.",
 		},
-		Offers: machines,
+		Offers: &SerializableCollection{
+			marshaler: machinesMarshaler,
+			count:     len(m),
+			get:       func(i int) any { return m[i].asRaw() },
+		},
 	})
 
 	if err != nil {
@@ -104,7 +131,10 @@ func serializeMachines(machines *VastAiMachineOffers, ts time.Time) *CachedRespo
 		return buildCachedResponse(ts, "/machines", nil)
 	}
 
-	return buildCachedResponse(ts, "/machines", result)
+	log.Printf("INFO: Pre-serialized /machines: %d bytes raw, %d bytes gzipped",
+		len(raw), len(gzipped))
+
+	return &CachedResponse{ts: ts, etag: makeEtag(ts, "/machines"), raw: raw, gzipped: gzipped}
 }
 
 func serializeHosts(machines VastAiMachineOffers, ts time.Time) *CachedResponse {
