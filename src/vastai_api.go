@@ -121,6 +121,9 @@ func vastApiCall(result any, endpoint string, args url.Values, timeout time.Dura
 	if err != nil {
 		return err
 	}
+
+	defer timeStage("parse_api")()
+
 	err = json.Unmarshal(body, result)
 	if err != nil {
 		logErrorBody(body)

@@ -142,7 +142,20 @@ func serializeHosts(wholeMachineRawOffers VastAiRawOffers, ts time.Time) *Cached
 }
 
 func serializeGpuStats(machines VastAiOffers, ts time.Time) *CachedResponse {
+	result := prepareGpuStats(machines, ts)
+
 	defer timeStage("json_gpu_stats")()
+
+	j, err := json.MarshalIndent(result, "", "    ")
+	if err != nil {
+		log.Println("ERROR:", err)
+		return buildCachedResponse(ts, "/gpu-stats", nil)
+	}
+	return buildCachedResponse(ts, "/gpu-stats", j)
+}
+
+func prepareGpuStats(machines VastAiOffers, ts time.Time) GpuStatsResponse {
+	defer timeStage("calc_gpu_stats")()
 
 	groupedOffers := machines.groupByGpu()
 	result := GpuStatsResponse{
@@ -167,16 +180,27 @@ func serializeGpuStats(machines VastAiOffers, ts time.Time) *CachedResponse {
 		return cmp.Compare(b.Stats.All.All.Count, a.Stats.All.All.Count)
 	})
 
-	j, err := json.MarshalIndent(result, "", "    ")
-	if err != nil {
-		log.Println("ERROR:", err)
-		return buildCachedResponse(ts, "/gpu-stats", nil)
-	}
-	return buildCachedResponse(ts, "/gpu-stats", j)
+	return result
 }
 
 func serializeHostMap(wholeMachineRawOffers VastAiRawOffers, ts time.Time) *CachedResponse {
+	mapItems := prepareHostMap(wholeMachineRawOffers)
+
 	defer timeStage("json_host_map")()
+
+	result, err := json.MarshalIndent(HostMapResponse{
+		Items: mapItems,
+	}, "", "    ")
+	if err != nil {
+		log.Println("ERROR:", err)
+		return buildCachedResponse(ts, "/host-map-data", nil)
+	}
+
+	return buildCachedResponse(ts, "/host-map-data", result)
+}
+
+func prepareHostMap(wholeMachineRawOffers VastAiRawOffers) HostMapItems {
+	defer timeStage("calc_host_map")()
 
 	hosts := wholeMachineRawOffers.getHosts()
 
@@ -188,13 +212,5 @@ func serializeHostMap(wholeMachineRawOffers VastAiRawOffers, ts time.Time) *Cach
 		}
 	}
 
-	result, err := json.MarshalIndent(HostMapResponse{
-		Items: mapItems,
-	}, "", "    ")
-	if err != nil {
-		log.Println("ERROR:", err)
-		return buildCachedResponse(ts, "/host-map-data", nil)
-	}
-
-	return buildCachedResponse(ts, "/host-map-data", result)
+	return mapItems
 }

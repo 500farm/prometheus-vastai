@@ -52,6 +52,8 @@ func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 		metrics.ObserveAPIResponseSize("master/offers", len(body))
 	}
 
+	defer timeStage("parse_master")()
+
 	var j RawOffersResponse
 	err = json.Unmarshal(body, &j)
 	if err != nil {
@@ -70,12 +72,15 @@ func getRawOffersFromApi(result *VastAiApiResults) error {
 	var t struct {
 		Offers VastAiRawOffers `json:"offers"`
 	}
-	result.ts = time.Now()
+
 	if err := vastApiCall(&t, "bundles", url.Values{
 		"q": {`{"external":{"eq":"false"},"type":"on-demand","disable_bundling":true}`},
 	}, bundleTimeout); err != nil {
 		return err
 	}
+
+	defer timeStage("parse_api_post")
+
 	for _, offer := range t.Offers {
 		// remove useless fields
 		delete(offer, "external")
@@ -94,7 +99,10 @@ func getRawOffersFromApi(result *VastAiApiResults) error {
 		}
 		offer["verified"] = offer["verification"] == "verified"
 	}
+
 	result.offers = &t.Offers
+	result.ts = time.Now()
+
 	return nil
 }
 

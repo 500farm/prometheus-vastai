@@ -52,6 +52,8 @@ func (e *VastAiGlobalCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (e *VastAiGlobalCollector) UpdateFrom(offerCache *OfferCacheSnapshot) {
+	defer timeStage("global_metrics")()
+
 	e.VastAiPriceStatsCollector.UpdateFrom(offerCache, nil)
 
 	groupedOffers := offerCache.machines.groupByGpu()

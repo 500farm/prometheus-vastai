@@ -31,7 +31,7 @@ func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 		rawOffers := (*apiRes.offers).validate().dedupe()
 		done()
 
-		done = timeStage("collect_whole_machines")
+		done = timeStage("calc_whole_machines")
 		wholeMachineRawOffers := rawOffers.collectWholeMachines()
 		done()
 
