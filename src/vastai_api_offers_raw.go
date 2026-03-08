@@ -79,7 +79,7 @@ func getRawOffersFromApi(result *VastAiApiResults) error {
 		return err
 	}
 
-	defer timeStage("parse_api_post")
+	defer timeStage("parse_api_post")()
 
 	for _, offer := range t.Offers {
 		// remove useless fields
@@ -144,14 +144,9 @@ func (offers VastAiRawOffers) validate() VastAiRawOffers {
 }
 
 func (offers VastAiRawOffers) dedupe() VastAiRawOffers {
-	type seenOffer struct {
-		machineId int
-		numGpus   int
-		dups      int
-	}
-
 	result := make(VastAiRawOffers, 0, len(offers))
-	seen := make(map[int]*seenOffer, len(offers))
+	seen := make(map[int]bool, len(offers))
+	totalDups := 0
 
 	for _, offer := range offers {
 		idVal, ok := offer["id"].(float64)
@@ -159,28 +154,16 @@ func (offers VastAiRawOffers) dedupe() VastAiRawOffers {
 			continue
 		}
 		id := int(idVal)
-		if info, exists := seen[id]; exists {
-			info.dups++
+		if seen[id] {
+			totalDups++
 			continue
 		}
-		seen[id] = &seenOffer{
-			machineId: offer.machineId(),
-			numGpus:   offer.numGpus(),
-		}
+		seen[id] = true
 		result = append(result, offer)
 	}
 
-	dupIds := make([]int, 0, len(seen))
-	for id, info := range seen {
-		if info.dups > 0 {
-			dupIds = append(dupIds, id)
-		}
-	}
-	slices.Sort(dupIds)
-	for _, id := range dupIds {
-		info := seen[id]
-		log.Println("WARN:", fmt.Sprintf("Offer ID %d (machine=%d, ngpu=%d) repeated %d times",
-			id, info.machineId, info.numGpus, info.dups+1))
+	if totalDups > 0 {
+		log.Println("WARN:", fmt.Sprintf("Removed %d duplicate offers", totalDups))
 	}
 
 	return result
@@ -347,7 +330,7 @@ func (offers VastAiRawOffers) collectWholeMachines() VastAiRawOffers {
 		if geoCache != nil {
 			ip, _ := wholeMachine.offer["public_ipaddr"].(string)
 			if ip != "" {
-				if location := geoCache.ipLocation(ip); location != nil {
+				if location := geoCache.ipLocation(ip, machineId); location != nil {
 					newOffer["location"] = location
 				}
 			}

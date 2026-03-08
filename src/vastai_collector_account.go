@@ -271,7 +271,7 @@ func (e *VastAiAccountCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (e *VastAiAccountCollector) UpdateFrom(info VastAiApiResults, offerCache *OfferCacheSnapshot) {
-	defer timeStage("metrics_account")
+	defer timeStage("metrics_account")()
 
 	e.UpdateMachinesAndInstances(info, offerCache)
 	e.UpdatePayouts(info)

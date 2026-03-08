@@ -126,19 +126,19 @@ func loadGeoCache() (*GeoCache, error) {
 	return cache, nil
 }
 
-func (cache *GeoCache) ipLocation(ip string) *GeoLocation {
+func (cache *GeoCache) ipLocation(ip string, machineId int) *GeoLocation {
 	parsedIp := net.ParseIP(ip)
 	if parsedIp == nil {
-		log.Println("WARN: Invalid IP address:", ip)
+		log.Printf("WARN: Invalid IP address: %s (machine=%d)", ip, machineId)
 		return nil
 	}
 	if !parsedIp.IsGlobalUnicast() || parsedIp.IsPrivate() || isCgnatIp(parsedIp) {
-		log.Println("WARN: IP address from an invalid range:", ip)
+		log.Printf("WARN: IP address from an invalid range: %s (machine=%d)", ip, machineId)
 		return nil
 	}
 	for _, net := range cache.skipNets {
 		if net.Contains(parsedIp) {
-			log.Println("INFO: Skipped geolocation for IP:", ip)
+			log.Printf("INFO: Skipped geolocation for IP: %s (machine=%d)", ip, machineId)
 			return nil
 		}
 	}

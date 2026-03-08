@@ -39,6 +39,8 @@ func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 		machines := wholeMachineRawOffers.decode()
 		done()
 
+		log.Println("INFO:", len(rawOffers), "raw offers,", len(machines), "machines")
+
 		responses := NewSerializedResponses(rawOffers, wholeMachineRawOffers, machines, apiRes.ts)
 
 		cache.mu.Lock()
@@ -57,8 +59,6 @@ func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 		if geoCache != nil {
 			geoCache.save()
 		}
-
-		log.Println("INFO:", cache.offerCount, "raw offers,", len(cache.machines), "machines")
 	}
 }
 
