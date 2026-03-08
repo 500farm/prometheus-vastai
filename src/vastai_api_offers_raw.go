@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"slices"
 
-	json "github.com/goccy/go-json"
+	"encoding/json"
 
 	"strconv"
 	"strings"

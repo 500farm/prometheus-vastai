@@ -10,7 +10,7 @@ import (
 	"slices"
 	"time"
 
-	json "github.com/goccy/go-json"
+	"encoding/json"
 )
 
 type SerializedResponses map[string]*CachedResponse
