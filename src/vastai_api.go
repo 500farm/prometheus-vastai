@@ -138,6 +138,10 @@ func vastApiCall(result any, endpoint string, args url.Values, timeout time.Dura
 }
 
 func vastApiCallRaw(endpoint string, args url.Values, timeout time.Duration) ([]byte, error) {
+	if body, ok := readTestData(endpoint); ok {
+		return body, nil
+	}
+
 	if args == nil {
 		args = make(url.Values)
 	}
