@@ -56,3 +56,8 @@ func (f *FlipBuffer) FlipGzip() *pgzip.Writer {
 func (f *FlipBuffer) Bytes() []byte {
 	return f.bufs[f.cur].Bytes()
 }
+
+// returns total capacity of both underlying buffers in bytes
+func (f *FlipBuffer) Cap() int {
+	return f.bufs[0].Cap() + f.bufs[1].Cap()
+}

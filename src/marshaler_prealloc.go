@@ -83,6 +83,15 @@ func (s *Marshaler) Marshal(v any) (raw []byte, gzipped []byte, err error) {
 	return raw, gzipped, nil
 }
 
+// returns total capacity of all preallocated buffers in bytes
+func (s *Marshaler) BufCap() int {
+	n := s.rawBuf.Cap() + s.gzipBuf.Cap()
+	for _, buf := range s.workerBufs {
+		n += buf.Cap()
+	}
+	return n
+}
+
 type SerializableCollection struct {
 	marshaler *Marshaler
 	count     int

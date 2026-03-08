@@ -26,6 +26,8 @@ type ExporterMetrics struct {
 
 	processDurationSeconds *prometheus.GaugeVec
 	processSecondsTotal    *prometheus.CounterVec
+
+	marshalerBufferCapBytes *prometheus.GaugeVec
 }
 
 func newExporterMetrics() *ExporterMetrics {
@@ -114,6 +116,12 @@ func newExporterMetrics() *ExporterMetrics {
 			Name:      "seconds_total",
 			Help:      "Total CPU seconds spent in processing.",
 		}, []string{"stage"}),
+
+		marshalerBufferCapBytes: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "marshaler_buffer_cap_bytes",
+			Help:      "Total capacity of preallocated marshaler buffers in bytes.",
+		}, []string{"endpoint"}),
 	}
 }
 
@@ -135,6 +143,8 @@ func (m *ExporterMetrics) Describe(ch chan<- *prometheus.Desc) {
 
 	m.processDurationSeconds.Describe(ch)
 	m.processSecondsTotal.Describe(ch)
+
+	m.marshalerBufferCapBytes.Describe(ch)
 }
 
 func (m *ExporterMetrics) Collect(ch chan<- prometheus.Metric) {
@@ -155,6 +165,10 @@ func (m *ExporterMetrics) Collect(ch chan<- prometheus.Metric) {
 
 	m.processDurationSeconds.Collect(ch)
 	m.processSecondsTotal.Collect(ch)
+
+	m.marshalerBufferCapBytes.WithLabelValues("offers").Set(float64(offersMarshaler.BufCap()))
+	m.marshalerBufferCapBytes.WithLabelValues("machines").Set(float64(machinesMarshaler.BufCap()))
+	m.marshalerBufferCapBytes.Collect(ch)
 }
 
 func (m *ExporterMetrics) ObserveAPIDuration(endpoint string, seconds float64) {
