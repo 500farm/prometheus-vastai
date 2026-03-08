@@ -122,7 +122,9 @@ func vastApiCall(result any, endpoint string, args url.Values, timeout time.Dura
 		return err
 	}
 
-	defer timeStage("parse_api")()
+	if endpoint == "bundles" {
+		defer timeStage("parse_api")()
+	}
 
 	err = json.Unmarshal(body, result)
 	if err != nil {
