@@ -18,7 +18,7 @@ func timeStage(stage string) func() {
 type OfferCache struct {
 	mu         sync.RWMutex
 	offerCount int
-	machines   VastAiOffers
+	machines   VastAiMachineOffers
 	responses  SerializedResponses
 	ts         time.Time
 }
@@ -27,24 +27,20 @@ var offerCache OfferCache
 
 func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 	if apiRes.offers != nil {
-		done := timeStage("validate_dedupe")
-		rawOffers := (*apiRes.offers).validate().dedupe()
+		done := timeStage("decode")
+		offers := (*apiRes.offers).decode()
 		done()
 
-		done = timeStage("calc_whole_machines")
-		wholeMachineRawOffers := rawOffers.collectWholeMachines()
+		done = timeStage("collect_machines")
+		machines := offers.collectMachineOffers()
 		done()
 
-		done = timeStage("decode")
-		machines := wholeMachineRawOffers.decode()
-		done()
+		log.Println("INFO:", len(offers), "offers,", len(machines), "machines")
 
-		log.Println("INFO:", len(rawOffers), "raw offers,", len(machines), "machines")
-
-		responses := NewSerializedResponses(rawOffers, wholeMachineRawOffers, machines, apiRes.ts)
+		responses := NewSerializedResponses(offers, machines, apiRes.ts)
 
 		cache.mu.Lock()
-		cache.offerCount = len(rawOffers)
+		cache.offerCount = len(offers)
 		cache.machines = machines
 		cache.responses = responses
 		cache.ts = apiRes.ts
@@ -53,7 +49,7 @@ func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 		runtime.GC()
 
 		if metrics != nil {
-			metrics.UpdateCounts(len(rawOffers), len(wholeMachineRawOffers))
+			metrics.UpdateCounts(len(offers), len(machines))
 		}
 
 		if geoCache != nil {

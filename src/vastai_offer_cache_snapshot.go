@@ -6,7 +6,7 @@ import (
 
 type OfferCacheSnapshot struct {
 	offerCount int
-	machines   VastAiOffers
+	machines   VastAiMachineOffers
 	responses  SerializedResponses
 	ts         time.Time
 }
