@@ -178,11 +178,13 @@ func (offers VastAiRawOffers) dedupe() VastAiRawOffers {
 }
 
 func (offers VastAiRawOffers) groupByMachineId() map[int]VastAiRawOffers {
-	grouped := make(map[int]VastAiRawOffers)
+	grouped := make(map[int]VastAiRawOffers, len(offers) / 4)
+
 	for _, offer := range offers {
 		machineId := offer.machineId()
 		grouped[machineId] = append(grouped[machineId], offer)
 	}
+
 	return grouped
 }
 
@@ -210,7 +212,7 @@ func (chunk Chunk) gpuIdsSorted() []int {
 }
 
 func (offers VastAiRawOffers) collectWholeMachines() VastAiRawOffers {
-	result := make(VastAiRawOffers, 0, len(offers) / 10)
+	result := make(VastAiRawOffers, 0, len(offers) / 4)
 
 	for machineId, offers := range offers.groupByMachineId() {
 		// for each machine:
