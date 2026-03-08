@@ -222,7 +222,7 @@ func (cache *GeoCache) queryMaxMind(ip string) (*GeoLocation, error) {
 	}
 	for i := len(j.SubDivisions) - 1; i >= 0; i-- {
 		name := j.SubDivisions[i].Names.En
-		name = strings.Replace(name, "St.-", "St ", -1) // St.-Petersburg => St Petersburg
+		name = strings.ReplaceAll(name, "St.-", "St ") // St.-Petersburg => St Petersburg
 		if name != j.City.Names.En {
 			if r.Location != "" {
 				r.Location += ", "

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"sort"
+
 	"strconv"
 	"strings"
 	"time"
@@ -167,7 +167,7 @@ func (offers VastAiRawOffers) dedupe() VastAiRawOffers {
 			dupIds = append(dupIds, id)
 		}
 	}
-	sort.Ints(dupIds)
+	slices.Sort(dupIds)
 	for _, id := range dupIds {
 		info := seen[id]
 		log.Println("WARN:", fmt.Sprintf("Offer ID %d (machine=%d, ngpu=%d) repeated %d times",

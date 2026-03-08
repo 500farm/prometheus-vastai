@@ -8,6 +8,7 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 )
@@ -44,8 +45,8 @@ var (
 )
 
 var (
-	goCollector      = prometheus.NewGoCollector()
-	processCollector = prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{})
+	goCollector      = collectors.NewGoCollector()
+	processCollector = collectors.NewProcessCollector(collectors.ProcessCollectorOpts{})
 )
 
 func metricsHandler(w http.ResponseWriter, r *http.Request, collectors ...prometheus.Collector) {
