@@ -121,6 +121,7 @@ func (e *VastAiPriceStatsCollector) UpdateFrom(offerCache *OfferCacheSnapshot, g
 	// always include these GPUs
 	isMyGpu["RTX 3090"] = true
 	isMyGpu["RTX 4090"] = true
+	isMyGpu["RTX 5090"] = true
 
 	for gpuName, offers := range groupedOffers {
 		if filterByGpuName && !isMyGpu[gpuName] {
