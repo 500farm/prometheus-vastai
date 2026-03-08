@@ -2,9 +2,10 @@ package main
 
 import (
 	"bytes"
-	"compress/gzip"
 	"runtime"
 	"sync"
+
+	pgzip "github.com/klauspost/pgzip"
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
@@ -88,36 +89,11 @@ func (s *VastAiRawOffers) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return enc.WriteToken(jsontext.EndArray)
 }
 
-func parallelGzip(data []byte) []byte {
-	if len(data) == 0 {
-		return emptyGzip()
-	}
-
-	workers := 1
-	if len(data) >= 100*1024 {
-		workers = numWorkers()
-	}
-
-	chunks := make([][]byte, workers)
-
-	parallelDo(len(data), workers, func(w, start, end int) {
-		var buf bytes.Buffer
-		gz, _ := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
-		gz.Write(data[start:end])
-		gz.Close()
-		chunks[w] = buf.Bytes()
-	})
-
-	out := bytes.Join(chunks, nil)
-	if len(out) == 0 {
-		return emptyGzip()
-	}
-	return out
-}
-
-func emptyGzip() []byte {
+func gzip(data []byte) []byte {
 	var buf bytes.Buffer
-	gz, _ := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+	gz, _ := pgzip.NewWriterLevel(&buf, pgzip.BestSpeed)
+	gz.SetConcurrency(1<<20, numWorkers())
+	gz.Write(data)
 	gz.Close()
 	return buf.Bytes()
 }

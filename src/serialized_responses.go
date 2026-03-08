@@ -67,7 +67,7 @@ func buildCachedResponse(ts time.Time, endpoint string, jsonBytes []byte) *Cache
 		ts:      ts,
 		etag:    makeEtag(ts, endpoint),
 		raw:     jsonBytes,
-		gzipped: parallelGzip(jsonBytes),
+		gzipped: gzip(jsonBytes),
 	}
 
 	log.Printf("INFO: Pre-serialized %s: %d bytes raw, %d bytes gzipped",
