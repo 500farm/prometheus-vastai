@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -13,6 +12,8 @@ import (
 	"time"
 
 	"github.com/aquilax/truncate"
+	jsonv2 "github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
 )
 
 type VastAiApiResults struct {
@@ -126,7 +127,9 @@ func vastApiCall(result any, endpoint string, args url.Values, timeout time.Dura
 		defer timeStage("parse_api")()
 	}
 
-	err = json.Unmarshal(body, result)
+	err = jsonv2.Unmarshal(body, result,
+		jsontext.AllowDuplicateNames(true),
+	)
 	if err != nil {
 		logErrorBody(body)
 		return err

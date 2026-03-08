@@ -9,14 +9,14 @@ import (
 	"net/url"
 	"slices"
 
-	"encoding/json"
-
 	"strconv"
 	"strings"
 	"time"
 
 	"log"
 
+	jsonv2 "github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
 	"github.com/hashicorp/go-set/v2"
 )
 
@@ -55,7 +55,9 @@ func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 	defer timeStage("parse_master")()
 
 	var j RawOffersResponse
-	err = json.Unmarshal(body, &j)
+	err = jsonv2.Unmarshal(body, &j,
+		jsontext.AllowDuplicateNames(true),
+	)
 	if err != nil {
 		return err
 	}
