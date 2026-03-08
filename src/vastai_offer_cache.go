@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -14,39 +15,41 @@ func timeStage(stage string) func() {
 }
 
 type OfferCache struct {
-	mu                    sync.RWMutex
-	rawOffers             VastAiRawOffers
-	wholeMachineRawOffers VastAiRawOffers
-	machines              VastAiOffers
-	ts                    time.Time
+	mu         sync.RWMutex
+	offerCount int
+	machines   VastAiOffers
+	responses  SerializedResponses
+	ts         time.Time
 }
 
 var offerCache OfferCache
 
 func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 	if apiRes.offers != nil {
-		prev := cache.Snapshot()
-
 		done := timeStage("validate_dedupe")
 		rawOffers := (*apiRes.offers).validate().dedupe()
 		done()
 
 		done = timeStage("collect_whole_machines")
-		wholeMachineRawOffers := rawOffers.collectWholeMachines(prev.wholeMachineRawOffers)
+		wholeMachineRawOffers := rawOffers.collectWholeMachines()
 		done()
 
 		done = timeStage("decode")
 		machines := wholeMachineRawOffers.decode()
 		done()
 
+		done = timeStage("pre_serialize")
+		responses := NewSerializedResponses(rawOffers, wholeMachineRawOffers, machines, apiRes.ts)
+		done()
+
 		cache.mu.Lock()
-
-		cache.rawOffers = rawOffers
-		cache.wholeMachineRawOffers = wholeMachineRawOffers
+		cache.offerCount = len(rawOffers)
 		cache.machines = machines
+		cache.responses = responses
 		cache.ts = apiRes.ts
-
 		cache.mu.Unlock()
+
+		runtime.GC()
 
 		if metrics != nil {
 			metrics.UpdateCounts(len(rawOffers), len(wholeMachineRawOffers))
@@ -64,12 +67,4 @@ func (cache *OfferCache) InitialUpdateFrom(apiRes VastAiApiResults) error {
 	}
 	cache.UpdateFrom(apiRes)
 	return nil
-}
-
-type RawOffersResponse struct {
-	Url       string           `json:"url"`
-	Timestamp time.Time        `json:"timestamp"`
-	Count     int              `json:"count"`
-	Note      string           `json:"note,omitempty"`
-	Offers    *VastAiRawOffers `json:"offers"`
 }

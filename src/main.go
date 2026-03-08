@@ -111,24 +111,19 @@ func main() {
 	}
 
 	http.HandleFunc("/offers", func(w http.ResponseWriter, r *http.Request) {
-		snap := offerCache.Snapshot()
-		jsonHandler(w, r, snap.ts, snap.rawOffersJson)
+		jsonHandler(w, r, offerCache.Snapshot().Offers())
 	})
 	http.HandleFunc("/machines", func(w http.ResponseWriter, r *http.Request) {
-		snap := offerCache.Snapshot()
-		jsonHandler(w, r, snap.ts, snap.wholeMachinesJson)
+		jsonHandler(w, r, offerCache.Snapshot().Machines())
 	})
 	http.HandleFunc("/hosts", func(w http.ResponseWriter, r *http.Request) {
-		snap := offerCache.Snapshot()
-		jsonHandler(w, r, snap.ts, snap.hostsJson)
+		jsonHandler(w, r, offerCache.Snapshot().Hosts())
 	})
 	http.HandleFunc("/gpu-stats", func(w http.ResponseWriter, r *http.Request) {
-		snap := offerCache.Snapshot()
-		jsonHandler(w, r, snap.ts, snap.gpuStatsJson)
+		jsonHandler(w, r, offerCache.Snapshot().GpuStats())
 	})
 	http.HandleFunc("/host-map-data", func(w http.ResponseWriter, r *http.Request) {
-		snap := offerCache.Snapshot()
-		jsonHandler(w, r, snap.ts, snap.hostMapJson)
+		jsonHandler(w, r, offerCache.Snapshot().HostMapData())
 	})
 
 	http.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {

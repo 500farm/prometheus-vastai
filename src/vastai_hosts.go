@@ -2,9 +2,7 @@ package main
 
 import (
 	"cmp"
-	json "github.com/goccy/go-json"
 	"fmt"
-	"log"
 	"slices"
 	"strconv"
 	"time"
@@ -31,26 +29,6 @@ type HostsResponse struct {
 	Count     int       `json:"count"`
 	Note      string    `json:"note,omitempty"`
 	Hosts     *Hosts    `json:"hosts"`
-}
-
-func (cache *OfferCacheSnapshot) hostsJson() JsonResponse {
-	defer timeStage("json_hosts")()
-
-	hosts := cache.wholeMachineRawOffers.getHosts()
-
-	result, err := json.MarshalIndent(HostsResponse{
-		Url:       "/hosts",
-		Timestamp: cache.ts.UTC(),
-		Count:     len(hosts),
-		Note:      "Sorted by total TFLOPS (largest first). Hosts with multiple geo locations are split into multiple records.",
-		Hosts:     &hosts,
-	}, "", "    ")
-	if err != nil {
-		log.Println("ERROR:", err)
-		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag("/hosts")}
-	}
-
-	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag("/hosts")}
 }
 
 func (offers VastAiRawOffers) getHosts() Hosts {

@@ -2,9 +2,7 @@ package main
 
 import (
 	"cmp"
-	json "github.com/goccy/go-json"
 	"fmt"
-	"log"
 	"math"
 	"slices"
 	"strconv"
@@ -37,30 +35,6 @@ type HostMapItems []HostMapItem
 
 type HostMapResponse struct {
 	Items HostMapItems `json:"items"`
-}
-
-func (cache *OfferCacheSnapshot) hostMapJson() JsonResponse {
-	defer timeStage("json_host_map")()
-
-	hosts := cache.wholeMachineRawOffers.getHosts()
-
-	mapItems := make(HostMapItems, 0, len(hosts))
-	for _, host := range hosts {
-		item := host.mapItem()
-		if item != nil {
-			mapItems = append(mapItems, *item)
-		}
-	}
-
-	result, err := json.MarshalIndent(HostMapResponse{
-		Items: mapItems,
-	}, "", "    ")
-	if err != nil {
-		log.Println("ERROR:", err)
-		return JsonResponse{Content: nil, LastModified: cache.ts, ETag: cache.etag("/host-map-data")}
-	}
-
-	return JsonResponse{Content: result, LastModified: cache.ts, ETag: cache.etag("/host-map-data")}
 }
 
 func (host *Host) mapItem() *HostMapItem {

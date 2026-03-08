@@ -488,6 +488,6 @@ func (e *VastAiAccountCollector) InitialUpdateFrom(info VastAiApiResults, offerC
 
 	e.UpdateFrom(info, offerCache)
 
-	log.Println("INFO:", len(offerCache.rawOffers), "raw offers,", len(*info.myMachines), "machines,", len(*info.myInstances), "instances, payouts:", *info.payouts)
+	log.Println("INFO:", offerCache.offerCount, "raw offers,", len(*info.myMachines), "machines,", len(*info.myInstances), "instances, payouts:", *info.payouts)
 	return nil
 }

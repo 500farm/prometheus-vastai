@@ -209,8 +209,8 @@ func (chunk Chunk) gpuIdsSorted() []int {
 	return gpuIds
 }
 
-func (offers VastAiRawOffers) collectWholeMachines(prevResult VastAiRawOffers) VastAiRawOffers {
-	result := make(VastAiRawOffers, 0, len(prevResult))
+func (offers VastAiRawOffers) collectWholeMachines() VastAiRawOffers {
+	result := make(VastAiRawOffers, 0, len(offers) / 10)
 
 	for machineId, offers := range offers.groupByMachineId() {
 		// for each machine:
