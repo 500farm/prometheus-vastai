@@ -34,12 +34,32 @@ func parallelDo(total, workers int, fn func(w, start, end int)) {
 	wg.Wait()
 }
 
+// shared buffers to reduce allocations
+var jsonBufPool = sync.Pool{
+	New: func() any {
+		return bytes.NewBuffer(make([]byte, 0, 128*1024*1024))
+	},
+}
+
+var elemBufPool = sync.Pool{
+	New: func() any {
+		return bytes.NewBuffer(make([]byte, 0, 8*1024))
+	},
+}
+
 func jsonMarshalV2(v any) ([]byte, error) {
-	return jsonv2.Marshal(v,
+	jsonBuf := jsonBufPool.Get().(*bytes.Buffer)
+	defer jsonBufPool.Put(jsonBuf)
+	jsonBuf.Reset()
+
+	enc := jsontext.NewEncoder(jsonBuf,
 		jsontext.WithIndent("    "),
-		jsonv2.Deterministic(true),
 		jsontext.AllowDuplicateNames(true),
 	)
+	if err := jsonv2.MarshalEncode(enc, v, jsonv2.Deterministic(true)); err != nil {
+		return nil, err
+	}
+	return append([]byte(nil), jsonBuf.Bytes()...), nil
 }
 
 func (s *VastAiRawOffers) MarshalJSONTo(enc *jsontext.Encoder) error {
@@ -65,12 +85,16 @@ func (s *VastAiRawOffers) MarshalJSONTo(enc *jsontext.Encoder) error {
 	elements := make([]marshaledElement, len(offers))
 
 	parallelDo(len(offers), workers, func(w, start, end int) {
+		buf := elemBufPool.Get().(*bytes.Buffer)
+		defer elemBufPool.Put(buf)
 		for i := start; i < end; i++ {
-			data, err := jsonv2.Marshal(offers[i],
-				jsonv2.Deterministic(true),
-				jsontext.AllowDuplicateNames(true),
-			)
-			elements[i] = marshaledElement{data: data, err: err}
+			buf.Reset()
+			elemEnc := jsontext.NewEncoder(buf, jsontext.AllowDuplicateNames(true))
+			err := jsonv2.MarshalEncode(elemEnc, offers[i], jsonv2.Deterministic(true))
+			elements[i] = marshaledElement{
+				data: append([]byte(nil), buf.Bytes()...),
+				err:  err,
+			}
 		}
 	})
 
@@ -143,11 +167,32 @@ func (s *VastAiRawOffers) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	return nil
 }
 
+// shared buffers to reduce allocations
+var gzipBufPool = sync.Pool{
+	New: func() any {
+		return bytes.NewBuffer(make([]byte, 0, 16*1024*1024))
+	},
+}
+
+var gzipWriterPool = sync.Pool{
+	New: func() any {
+		buf := bytes.NewBuffer(nil)
+		w, _ := pgzip.NewWriterLevel(buf, pgzip.DefaultCompression)
+		w.SetConcurrency(1<<20, numWorkers())
+		return w
+	},
+}
+
 func gzip(data []byte) []byte {
-	var buf bytes.Buffer
-	gz, _ := pgzip.NewWriterLevel(&buf, pgzip.DefaultCompression)
-	gz.SetConcurrency(1<<20, numWorkers())
+	buf := gzipBufPool.Get().(*bytes.Buffer)
+	defer gzipBufPool.Put(buf)
+	buf.Reset()
+
+	gz := gzipWriterPool.Get().(*pgzip.Writer)
+	defer gzipWriterPool.Put(gz)
+	gz.Reset(buf)
+
 	gz.Write(data)
 	gz.Close()
-	return buf.Bytes()
+	return append([]byte(nil), buf.Bytes()...)
 }
