@@ -2,13 +2,14 @@ package main
 
 import (
 	"cmp"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"math"
 	"net/http"
 	"net/url"
 	"slices"
+
+	json "github.com/goccy/go-json"
 
 	"strconv"
 	"strings"
@@ -171,7 +172,7 @@ func (offers VastAiRawOffers) dedupe() VastAiRawOffers {
 	for _, id := range dupIds {
 		info := seen[id]
 		log.Println("WARN:", fmt.Sprintf("Offer ID %d (machine=%d, ngpu=%d) repeated %d times",
-			id, info.machineId, info.numGpus, info.dups))
+			id, info.machineId, info.numGpus, info.dups+1))
 	}
 
 	return result
