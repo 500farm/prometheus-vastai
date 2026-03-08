@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"log"
 	"runtime"
 	"sync"
 	"time"
@@ -56,6 +57,8 @@ func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 		if geoCache != nil {
 			geoCache.save()
 		}
+
+		log.Println("INFO:", cache.offerCount, "raw offers,", len(cache.machines), "machines")
 	}
 }
 

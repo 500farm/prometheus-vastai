@@ -273,6 +273,10 @@ func (e *VastAiAccountCollector) Collect(ch chan<- prometheus.Metric) {
 func (e *VastAiAccountCollector) UpdateFrom(info VastAiApiResults, offerCache *OfferCacheSnapshot) {
 	e.UpdateMachinesAndInstances(info, offerCache)
 	e.UpdatePayouts(info)
+
+	log.Println("INFO:",
+		len(*info.myMachines), "my machines,",
+		len(*info.myInstances), "my instances, payouts:", *info.payouts)
 }
 
 func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResults, offerCache *OfferCacheSnapshot) {
@@ -488,9 +492,5 @@ func (e *VastAiAccountCollector) InitialUpdateFrom(info VastAiApiResults, offerC
 
 	e.UpdateFrom(info, offerCache)
 
-	log.Println("INFO:", offerCache.offerCount, "raw offers,",
-		len(offerCache.machines), "machines,",
-		len(*info.myMachines), "my machines,",
-		len(*info.myInstances), "my instances, payouts:", *info.payouts)
 	return nil
 }
