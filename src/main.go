@@ -203,13 +203,18 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(*updateInterval)
+
 			info := getVastAiInfo(*masterUrl)
 			offerCache.UpdateFrom(info)
 			snap := offerCache.Snapshot()
+
 			vastAiGlobalCollector.UpdateFrom(snap)
 			if useAccount {
 				vastAiAccountCollector.UpdateFrom(info, snap)
 			}
+
+			// not neeed anymore
+			offerCache.ClearMachines()
 		}
 	}()
 

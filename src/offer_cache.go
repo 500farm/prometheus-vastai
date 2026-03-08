@@ -65,3 +65,10 @@ func (cache *OfferCache) InitialUpdateFrom(apiRes VastAiApiResults) error {
 	cache.UpdateFrom(apiRes)
 	return nil
 }
+
+func (cache *OfferCache) ClearMachines() {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+
+	cache.machines = nil
+}
