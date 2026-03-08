@@ -66,7 +66,10 @@ func (machines VastAiMachineOffers) getHosts() Hosts {
 	}
 
 	slices.SortFunc(result2, func(a, b Host) int {
-		return cmp.Compare(b.Tflops, a.Tflops)
+		if c := cmp.Compare(b.Tflops, a.Tflops); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.MachineIds[0], b.MachineIds[0])
 	})
 
 	if metrics != nil {
