@@ -213,7 +213,7 @@ func main() {
 				vastAiAccountCollector.UpdateFrom(info, snap)
 			}
 
-			// not neeed anymore
+			// not neeeded anymore
 			offerCache.ClearMachines()
 		}
 	}()
