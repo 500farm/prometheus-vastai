@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"cmp"
-	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
 	"log"
@@ -66,16 +64,11 @@ func buildCachedResponse(ts time.Time, endpoint string, jsonBytes []byte) *Cache
 		}
 	}
 
-	var buf bytes.Buffer
-	gz, _ := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
-	gz.Write(jsonBytes)
-	gz.Close()
-
 	resp := &CachedResponse{
 		ts:      ts,
 		etag:    makeEtag(ts, endpoint),
 		raw:     jsonBytes,
-		gzipped: buf.Bytes(),
+		gzipped: parallelGzip(jsonBytes),
 	}
 
 	log.Printf("INFO: Pre-serialized %s: %d bytes raw, %d bytes gzipped",
