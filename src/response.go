@@ -50,12 +50,12 @@ func jsonHandler(w http.ResponseWriter, r *http.Request, cached *CachedResponse)
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && len(cached.gzipped) > 0 {
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Content-Length", strconv.Itoa(len(cached.gzipped)))
-		w.Write(cached.gzipped)
+		_, _ = w.Write(cached.gzipped)
 		written = len(cached.gzipped)
 
 	} else {
 		w.Header().Set("Content-Length", strconv.Itoa(len(cached.raw)))
-		w.Write(cached.raw)
+		_, _ = w.Write(cached.raw)
 		written = len(cached.raw)
 	}
 

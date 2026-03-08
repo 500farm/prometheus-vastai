@@ -76,8 +76,8 @@ func (s *Marshaler) Marshal(v any) (raw []byte, gzipped []byte, err error) {
 
 	// produce gzipped value
 	gzipWriter := s.gzipBuf.FlipGzip()
-	gzipWriter.Write(raw)
-	gzipWriter.Close()
+	_, _ = gzipWriter.Write(raw)
+	_ = gzipWriter.Close()
 	gzipped = s.gzipBuf.Bytes()
 
 	return raw, gzipped, nil

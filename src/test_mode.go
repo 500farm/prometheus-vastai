@@ -115,7 +115,7 @@ func testFetchAllEndpoints(mux http.Handler) {
 			continue
 		}
 		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if resp.StatusCode != 200 {
 			log.Printf("ERROR: GET %s: %s", ep.path, resp.Status)

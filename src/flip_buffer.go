@@ -31,7 +31,7 @@ func NewFlipGzipBuffer(initialSize int, concurrency int) *FlipBuffer {
 	}
 	for i := range 2 {
 		w, _ := pgzip.NewWriterLevel(f.bufs[i], pgzip.DefaultCompression)
-		w.SetConcurrency(1<<20, concurrency)
+		_ = w.SetConcurrency(1<<20, concurrency)
 		f.writers[i] = w
 	}
 	return f

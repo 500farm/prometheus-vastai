@@ -181,17 +181,17 @@ func main() {
 			http.NotFound(w, r)
 			return
 		}
-		w.Write([]byte(`<html><head><title>Vast.ai Exporter</title></head><body><h1>Vast.ai Exporter</h1>`))
+		_, _ = w.Write([]byte(`<html><head><title>Vast.ai Exporter</title></head><body><h1>Vast.ai Exporter</h1>`))
 		if useAccount {
-			w.Write([]byte(`<a href="metrics">Account stats</a><br><a href="metrics/global">Per-model stats on GPUs</a><br><br>`))
+			_, _ = w.Write([]byte(`<a href="metrics">Account stats</a><br><a href="metrics/global">Per-model stats on GPUs</a><br><br>`))
 		} else {
-			w.Write([]byte(`<a href="metrics">Per-model stats on GPUs</a><br><br>`))
+			_, _ = w.Write([]byte(`<a href="metrics">Per-model stats on GPUs</a><br><br>`))
 		}
-		w.Write([]byte(`<a href="offers">JSON list of offers</a><br>`))
-		w.Write([]byte(`<a href="machines">JSON list of machines</a><br>`))
-		w.Write([]byte(`<a href="hosts">JSON list of hosts</a><br>`))
-		w.Write([]byte(`<a href="gpu-stats">JSON per-model stats on GPUs</a><br>`))
-		w.Write([]byte(`</body></html>`))
+		_, _ = w.Write([]byte(`<a href="offers">JSON list of offers</a><br>`))
+		_, _ = w.Write([]byte(`<a href="machines">JSON list of machines</a><br>`))
+		_, _ = w.Write([]byte(`<a href="hosts">JSON list of hosts</a><br>`))
+		_, _ = w.Write([]byte(`<a href="gpu-stats">JSON per-model stats on GPUs</a><br>`))
+		_, _ = w.Write([]byte(`</body></html>`))
 	})
 
 	// "test parsing mode": fetch all endpoints to files and exit.

@@ -46,7 +46,7 @@ func (raw VastAiRawOffer) decode() (VastAiOffer, bool) {
 	dphBase, ok6 := raw["dph_base"].(float64)
 	rentable, ok7 := raw["rentable"].(bool)
 	gpuFrac, ok8 := raw["gpu_frac"].(float64)
-	if !(ok1 && ok2 && ok3 && ok4 && ok5 && ok6 && ok7 && ok8) {
+	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 || !ok7 || !ok8 {
 		return VastAiOffer{}, false
 	}
 

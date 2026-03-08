@@ -42,8 +42,8 @@ func makeEtag(ts time.Time, endpoint string) string {
 func gzip(data []byte) []byte {
 	var buf bytes.Buffer
 	w, _ := pgzip.NewWriterLevel(&buf, pgzip.DefaultCompression)
-	w.Write(data)
-	w.Close()
+	_, _ = w.Write(data)
+	_ = w.Close()
 	return buf.Bytes()
 }
 
