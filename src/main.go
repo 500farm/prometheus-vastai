@@ -43,8 +43,15 @@ var (
 	).PlaceHolder("IP[/NN],IP[/NN],...").String()
 )
 
+var (
+	goCollector      = prometheus.NewGoCollector()
+	processCollector = prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{})
+)
+
 func metricsHandler(w http.ResponseWriter, r *http.Request, collectors ...prometheus.Collector) {
 	registry := prometheus.NewRegistry()
+	registry.MustRegister(goCollector)
+	registry.MustRegister(processCollector)
 	for _, c := range collectors {
 		registry.MustRegister(c)
 	}
