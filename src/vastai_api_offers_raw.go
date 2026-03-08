@@ -177,15 +177,20 @@ func (offers VastAiRawOffers) dedupe() VastAiRawOffers {
 	return result
 }
 
-func (offers VastAiRawOffers) groupByMachineId() map[int]VastAiRawOffers {
-	grouped := make(map[int]VastAiRawOffers, len(offers) / 4)
+func (offers VastAiRawOffers) groupByMachineId(fn func(machineId int, group VastAiRawOffers)) {
+	slices.SortFunc(offers, func(a, b VastAiRawOffer) int {
+		return cmp.Compare(b.machineId(), a.machineId())
+	})
 
-	for _, offer := range offers {
-		machineId := offer.machineId()
-		grouped[machineId] = append(grouped[machineId], offer)
+	for i := 0; i < len(offers); {
+		machineId := offers[i].machineId()
+		j := i + 1
+		for j < len(offers) && offers[j].machineId() == machineId {
+			j++
+		}
+		fn(machineId, offers[i:j])
+		i = j
 	}
-
-	return grouped
 }
 
 type Chunk struct {
@@ -212,9 +217,9 @@ func (chunk Chunk) gpuIdsSorted() []int {
 }
 
 func (offers VastAiRawOffers) collectWholeMachines() VastAiRawOffers {
-	result := make(VastAiRawOffers, 0, len(offers) / 4)
+	result := make(VastAiRawOffers, 0, len(offers)/4)
 
-	for machineId, offers := range offers.groupByMachineId() {
+	offers.groupByMachineId(func(machineId int, offers VastAiRawOffers) {
 		// for each machine:
 
 		// - collect array of chunks from smallest to largest
@@ -256,7 +261,7 @@ func (offers VastAiRawOffers) collectWholeMachines() VastAiRawOffers {
 
 		if wholeMachine == nil {
 			log.Println("WARN:", fmt.Sprintf("Offer list inconsistency: machine %d has no chunk with frac=1.0, skipping", machineId))
-			continue
+			return
 		}
 
 		totalGpus := wholeMachine.size
@@ -370,10 +375,6 @@ func (offers VastAiRawOffers) collectWholeMachines() VastAiRawOffers {
 		newOffer.fixFloats()
 
 		result = append(result, newOffer)
-	}
-
-	slices.SortFunc(result, func(a, b VastAiRawOffer) int {
-		return cmp.Compare(b.machineId(), a.machineId())
 	})
 
 	return result
