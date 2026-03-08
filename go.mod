@@ -25,6 +25,5 @@ require (
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/aquilax/truncate v1.0.1
-	github.com/goccy/go-json v0.10.5
 	github.com/montanaflynn/stats v0.7.1
 )
