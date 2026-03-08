@@ -16,6 +16,7 @@ type Host struct {
 	IpAddresses []string     `json:"ip_addresses"`
 	Gpus        GpuCounts    `json:"gpus"`
 	Tflops      float64      `json:"tflops"`
+	Datacenter  bool         `json:"datacenter"`
 	Location    *GeoLocation `json:"location,omitempty"`
 	InetUp      float64      `json:"inet_up,omitempty"`
 	InetDown    float64      `json:"inet_down,omitempty"`
@@ -45,6 +46,7 @@ func (machines VastAiMachineOffers) getHosts() Hosts {
 			IpAddresses: []string{m.IpAddr},
 			Gpus:        gpus,
 			Tflops:      m.Tflops,
+			Datacenter:  m.Datacenter,
 			InetUp:      m.InetUp,
 			InetDown:    m.InetDown,
 			Location:    m.Location,
@@ -100,6 +102,7 @@ func (item1 Host) merge(item2 Host) Host {
 		IpAddresses: append(item1.IpAddresses, item2.IpAddresses...),
 		Gpus:        gpus,
 		Tflops:      item1.Tflops + item2.Tflops,
+		Datacenter:  item1.Datacenter || item2.Datacenter,
 		Location:    item2.Location,
 		InetUp:      max(item1.InetUp, item2.InetUp),
 		InetDown:    max(item1.InetDown, item2.InetDown),

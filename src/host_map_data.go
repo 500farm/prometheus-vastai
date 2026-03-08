@@ -27,6 +27,7 @@ type HostMapItem struct {
 	IpAddresses string       `json:"ip_addresses"`
 	Tflops      float64      `json:"tflops"`
 	TflopsSqrt  float64      `json:"tflops_sqrt"`
+	Datacenter  bool         `json:"datacenter"`
 	Location    *MapLocation `json:"location"`
 	Connection  string       `json:"connection"`
 }
@@ -52,8 +53,9 @@ func (host *Host) mapItem() *HostMapItem {
 		MachineIds:  intListToString(host.MachineIds),
 		IpAddresses: strings.Join(host.IpAddresses, ", "),
 		Tflops:      host.Tflops,
-		Location:    &loc,
 		TflopsSqrt:  math.Sqrt(host.Tflops),
+		Datacenter:  host.Datacenter,
+		Location:    &loc,
 		Connection:  connection,
 	}
 	return &r
