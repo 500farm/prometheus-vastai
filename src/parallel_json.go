@@ -91,7 +91,7 @@ func (s *VastAiRawOffers) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 func gzip(data []byte) []byte {
 	var buf bytes.Buffer
-	gz, _ := pgzip.NewWriterLevel(&buf, pgzip.BestSpeed)
+	gz, _ := pgzip.NewWriterLevel(&buf, pgzip.DefaultCompression)
 	gz.SetConcurrency(1<<20, numWorkers())
 	gz.Write(data)
 	gz.Close()

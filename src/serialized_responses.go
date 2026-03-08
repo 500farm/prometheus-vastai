@@ -16,7 +16,7 @@ type RawOffersResponse struct {
 	Url       string           `json:"url"`
 	Timestamp time.Time        `json:"timestamp"`
 	Count     int              `json:"count"`
-	Note      string           `json:"note,omitempty"`
+	Notes     []string         `json:"notes,omitempty"`
 	Offers    *VastAiRawOffers `json:"offers"`
 }
 
@@ -83,7 +83,11 @@ func serializeOffers(rawOffers VastAiRawOffers, ts time.Time) *CachedResponse {
 		Url:       "/offers",
 		Timestamp: ts.UTC(),
 		Count:     len(rawOffers),
-		Offers:    &rawOffers,
+		Notes: []string{
+			"Use Accept-Encoding: gzip for faster transfers.",
+			"Use If-None-Match or If-Modified-Since to avoid redundant downloads.",
+		},
+		Offers: &rawOffers,
 	})
 
 	if err != nil {
@@ -101,8 +105,12 @@ func serializeMachines(wholeMachineRawOffers VastAiRawOffers, ts time.Time) *Cac
 		Url:       "/machines",
 		Timestamp: ts.UTC(),
 		Count:     len(wholeMachineRawOffers),
-		Note:      "Sorted from newest to oldest.",
-		Offers:    &wholeMachineRawOffers,
+		Notes: []string{
+			"Sorted from newest to oldest.",
+			"Use Accept-Encoding: gzip for faster transfers.",
+			"Use If-None-Match or If-Modified-Since to avoid redundant downloads.",
+		},
+		Offers: &wholeMachineRawOffers,
 	})
 
 	if err != nil {
