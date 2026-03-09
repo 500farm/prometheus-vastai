@@ -15,11 +15,18 @@ type CachedResponse struct {
 }
 
 func jsonHandler(w http.ResponseWriter, r *http.Request, cached *CachedResponse) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	if cached == nil {
 		http.NotFound(w, r)
 		return
 	}
 
+	isHead := r.Method == http.MethodHead
 	endpoint := r.URL.Path
 
 	w.Header().Set("Content-Type", "application/json")
@@ -46,20 +53,21 @@ func jsonHandler(w http.ResponseWriter, r *http.Request, cached *CachedResponse)
 		}
 	}
 
-	var written int
+	var body []byte
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && len(cached.gzipped) > 0 {
 		w.Header().Set("Content-Encoding", "gzip")
-		w.Header().Set("Content-Length", strconv.Itoa(len(cached.gzipped)))
-		_, _ = w.Write(cached.gzipped)
-		written = len(cached.gzipped)
-
+		body = cached.gzipped
 	} else {
-		w.Header().Set("Content-Length", strconv.Itoa(len(cached.raw)))
-		_, _ = w.Write(cached.raw)
-		written = len(cached.raw)
+		body = cached.raw
+	}
+
+	size := len(body)
+	w.Header().Set("Content-Length", strconv.Itoa(size))
+	if !isHead {
+		_, _ = w.Write(body)
 	}
 
 	if metrics != nil {
-		metrics.ObserveServerResponse(endpoint, written)
+		metrics.ObserveServerResponse(endpoint, size)
 	}
 }
