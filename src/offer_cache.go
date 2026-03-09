@@ -28,7 +28,7 @@ var offerCache OfferCache
 func (cache *OfferCache) UpdateFrom(apiRes VastAiApiResults) {
 	if apiRes.offers != nil {
 		done := timeStage("decode")
-		offers := (*apiRes.offers).decode()
+		offers := apiRes.offers.decode()
 		done()
 
 		done = timeStage("collect_machines")

@@ -31,7 +31,7 @@ func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 		return err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		if metrics != nil {
 			metrics.ObserveAPIError("master/offers", strconv.Itoa(resp.StatusCode))
 		}
@@ -111,8 +111,7 @@ func getRawOffersFromApi(result *VastAiApiResults) error {
 
 func (offer VastAiRawOffer) fixFloats() {
 	for k, v := range offer {
-		switch fv := v.(type) {
-		case float64:
+		if fv, ok := v.(float64); ok {
 			if math.IsInf(fv, 0) || math.IsNaN(fv) {
 				log.Println("WARN:", fmt.Sprintf("Inf or NaN found with key '%s' in %v", k, offer))
 				offer[k] = nil

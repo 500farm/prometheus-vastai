@@ -41,7 +41,7 @@ var (
 	).PlaceHolder("USERID:KEY").String()
 	noGeoLocation = kingpin.Flag(
 		"no-geolocation",
-		"Exculde IP ranges from geolocation",
+		"Exclude IP ranges from geolocation",
 	).PlaceHolder("IP[/NN],IP[/NN],...").String()
 	downloadTestDataFlag = kingpin.Flag(
 		"download-test-data",

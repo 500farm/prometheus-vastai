@@ -66,8 +66,12 @@ func readLastPayouts() *PayoutInfo {
 }
 
 func storeLastPayouts(payouts *PayoutInfo) {
-	j, _ := json.Marshal(payouts)
-	err := os.WriteFile(*stateDir+"/.vastai_last_payouts", j, 0600)
+	j, err := json.Marshal(payouts)
+	if err != nil {
+		log.Println("ERROR:", err)
+		return
+	}
+	err = os.WriteFile(*stateDir+"/.vastai_last_payouts", j, 0600)
 	if err != nil {
 		log.Println("ERROR:", err)
 	}

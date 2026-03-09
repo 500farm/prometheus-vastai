@@ -27,14 +27,14 @@ type GeoLocation struct {
 }
 
 type GeoCacheEntry struct {
-	Expires  time.Time
-	Location *GeoLocation
+	Expires  time.Time    `json:"Expires"`
+	Location *GeoLocation `json:"Location"`
 }
 
 type GeoCacheEntries map[string]GeoCacheEntry
 
 type GeoCache struct {
-	Entries     GeoCacheEntries
+	Entries     GeoCacheEntries `json:"Entries"`
 	maxMindUser string
 	maxMindPass string
 	failed      bool
@@ -166,7 +166,7 @@ func (cache *GeoCache) ipLocation(ip string, machineId int) *GeoLocation {
 
 func (cache *GeoCache) save() {
 	cache.removeExpired()
-	j, _ := json.MarshalIndent(cache, "", "    ")
+	j, _ := json.MarshalIndent(cache, "", "    ") //nolint:errchkjson // GeoCache contains only safe JSON types
 	err := os.WriteFile(geoCacheFile(), j, 0600)
 	if err != nil {
 		log.Println("ERROR:", err)
@@ -176,7 +176,7 @@ func (cache *GeoCache) save() {
 func (cache *GeoCache) queryMaxMind(ip string) (*GeoLocation, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	url := fmt.Sprintf("https://geoip.maxmind.com/geoip/v2.1/city/%s?pretty", ip)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}

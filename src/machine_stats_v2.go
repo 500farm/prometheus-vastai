@@ -127,7 +127,7 @@ func (machines VastAiMachineOffers) categorizedStats() []CategorizedStats_Catego
 
 	result := make([]CategorizedStats_Category, 0, len(buckets))
 	for key, bucket := range buckets {
-		allPrices := append(bucket.rented, bucket.available...)
+		allPrices := slices.Concat(bucket.rented, bucket.available)
 
 		entry := CategorizedStats_Category{
 			GpuName:       key.gpuName,

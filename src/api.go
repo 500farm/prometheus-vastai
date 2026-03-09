@@ -164,7 +164,7 @@ func vastApiCallRaw(endpoint string, args url.Values, timeout time.Duration) ([]
 		return nil, err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		logErrorBody(body)
 		if metrics != nil {
 			metrics.ObserveAPIError(endpoint, strconv.Itoa(resp.StatusCode))

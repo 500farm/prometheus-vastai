@@ -1,0 +1,18 @@
+version: "2"
+
+linters:
+  enable:
+    - modernize    # Replace old patterns with modern stdlib (maps.Copy, slices.Sort, etc.)
+    - gocritic     # Bugs, performance, style (unnecessary derefs, single-case switches, append bugs)
+    - errchkjson   # Unchecked json.Marshal on types that can fail (float64 NaN/Inf)
+    - misspell     # English typos in strings and comments
+    - dupword      # Duplicate words in comments
+    - usestdlibvars # Magic literals that have stdlib constants (http.StatusOK, http.MethodGet)
+    - musttag      # Structs passed to json.Marshal/Unmarshal missing struct tags
+    - wastedassign # Variable assigned then overwritten before being read
+    - unconvert    # Unnecessary type conversions
+    - copyloopvar  # Unnecessary copies of loop variables (Go 1.22+)
+    - intrange     # Use range-over-int instead of C-style for loops (Go 1.22+)
+    - exptostd     # golang.org/x/exp functions that moved to stdlib
+    - mirror       # Wrong bytes/strings function usage patterns
+    - perfsprint   # fmt.Sprintf replaceable with faster alternatives
