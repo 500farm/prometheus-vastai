@@ -9,37 +9,43 @@ import (
 	"github.com/montanaflynn/stats"
 )
 
-type Category_GpuCountRange string
+type CategorizedStats_GpuCountRange string
 
 const (
-	GpuCount_1_to_3 Category_GpuCountRange = "1-3"
-	GpuCount_4_to_7 Category_GpuCountRange = "4-7"
-	GpuCount_8_plus Category_GpuCountRange = "8+"
+	GpuCount_1_to_3 CategorizedStats_GpuCountRange = "1-3"
+	GpuCount_4_to_7 CategorizedStats_GpuCountRange = "4-7"
+	GpuCount_8_plus CategorizedStats_GpuCountRange = "8+"
 )
 
-type CategorizedStatsEntry struct {
+type CategorizedStats_CategoryStats struct {
+	Rented    MachineStats `json:"rented"`
+	Available MachineStats `json:"available"`
+	All       MachineStats `json:"all"`
+}
+
+type CategorizedStats_Category struct {
 	GpuName string
 
-	Rented        bool
 	Verified      bool
 	Datacenter    bool
-	GpuCountRange Category_GpuCountRange
+	GpuCountRange CategorizedStats_GpuCountRange
 
-	Count          int
-	Median         float64
-	PercentileLow  float64
-	PercentileHigh float64
+	Stats CategorizedStats_CategoryStats
 }
 
 type categoryKey struct {
 	gpuName       string
-	rented        bool
 	verified      bool
 	datacenter    bool
-	gpuCountRange Category_GpuCountRange
+	gpuCountRange CategorizedStats_GpuCountRange
 }
 
-func gpuCountRange(numGpus int) Category_GpuCountRange {
+type categoryPrices struct {
+	rented    []float64
+	available []float64
+}
+
+func gpuCountRange(numGpus int) CategorizedStats_GpuCountRange {
 	switch {
 	case numGpus >= 8:
 		return GpuCount_8_plus
@@ -50,7 +56,7 @@ func gpuCountRange(numGpus int) Category_GpuCountRange {
 	}
 }
 
-func boolCmp(a, b bool) int {
+func compareBool(a, b bool) int {
 	if a == b {
 		return 0
 	}
@@ -60,95 +66,92 @@ func boolCmp(a, b bool) int {
 	return 1
 }
 
-func compareCategorizedStats(a, b CategorizedStatsEntry) int {
+func compareCategories(a, b CategorizedStats_Category) int {
 	if c := cmp.Compare(a.GpuName, b.GpuName); c != 0 {
 		return c
 	}
-	if c := boolCmp(a.Datacenter, b.Datacenter); c != 0 {
+	if c := compareBool(a.Datacenter, b.Datacenter); c != 0 {
 		return c
 	}
 	if c := cmp.Compare(string(a.GpuCountRange), string(b.GpuCountRange)); c != 0 {
 		return c
 	}
-	if c := boolCmp(a.Verified, b.Verified); c != 0 {
-		return c
-	}
-	return boolCmp(a.Rented, b.Rented)
+	return compareBool(a.Verified, b.Verified)
 }
 
-func (machines VastAiMachineOffers) categorizedStats() []CategorizedStatsEntry {
-	// collect per-GPU prices into buckets for each category combination.
-	buckets := make(map[categoryKey][]float64)
+func computeMachineStats(prices []float64) MachineStats {
+	result := MachineStats{
+		Count:          len(prices),
+		Median:         math.NaN(),
+		PercentileLow:  math.NaN(),
+		PercentileHigh: math.NaN(),
+	}
+	if len(prices) > 0 {
+		result.Median, _ = stats.Median(prices)
+		result.PercentileLow, _ = stats.Percentile(prices, 10)
+		result.PercentileHigh, _ = stats.Percentile(prices, 90)
+	}
+	return result
+}
+
+func (machines VastAiMachineOffers) categorizedStats() []CategorizedStats_Category {
+	buckets := make(map[categoryKey]*categoryPrices)
 
 	for _, m := range machines {
 		if m.GpuName == "" {
 			continue
 		}
 
+		key := categoryKey{
+			gpuName:       m.GpuName,
+			verified:      m.Verified,
+			datacenter:    m.Datacenter,
+			gpuCountRange: gpuCountRange(m.NumGpus),
+		}
+
+		bucket, ok := buckets[key]
+		if !ok {
+			bucket = &categoryPrices{}
+			buckets[key] = bucket
+		}
+
 		pricePerGpu := float64(m.PricePerGpu)
 
-		// gpu_count_range is based on the machine's total GPU count
-		countRange := gpuCountRange(m.NumGpus)
-
-		// a machine contributes to both rented and available buckets proportionally to its rented/available GPU counts
-		type portion struct {
-			rented  bool
-			numGpus int
+		for range m.NumGpusRented {
+			bucket.rented = append(bucket.rented, pricePerGpu)
 		}
-		portions := []portion{}
-		if m.NumGpusRented > 0 {
-			portions = append(portions, portion{rented: true, numGpus: m.NumGpusRented})
-		}
-		if m.NumGpus-m.NumGpusRented > 0 {
-			portions = append(portions, portion{rented: false, numGpus: m.NumGpus - m.NumGpusRented})
-		}
-
-		for _, p := range portions {
-			key := categoryKey{
-				gpuName:       m.GpuName,
-				rented:        p.rented,
-				verified:      m.Verified,
-				datacenter:    m.Datacenter,
-				gpuCountRange: countRange,
-			}
-			prices := buckets[key]
-			for range p.numGpus {
-				prices = append(prices, pricePerGpu)
-			}
-			buckets[key] = prices
+		for range m.NumGpus - m.NumGpusRented {
+			bucket.available = append(bucket.available, pricePerGpu)
 		}
 	}
 
-	// convert buckets to result entries
-	result := make([]CategorizedStatsEntry, 0, len(buckets))
-	for key, prices := range buckets {
-		entry := CategorizedStatsEntry{
-			GpuName:        key.gpuName,
-			Rented:         key.rented,
-			Verified:       key.verified,
-			Datacenter:     key.datacenter,
-			GpuCountRange:  key.gpuCountRange,
-			Count:          len(prices),
-			Median:         math.NaN(),
-			PercentileLow:  math.NaN(),
-			PercentileHigh: math.NaN(),
+	result := make([]CategorizedStats_Category, 0, len(buckets))
+	for key, bucket := range buckets {
+		allPrices := append(bucket.rented, bucket.available...)
+
+		entry := CategorizedStats_Category{
+			GpuName:       key.gpuName,
+			Verified:      key.verified,
+			Datacenter:    key.datacenter,
+			GpuCountRange: key.gpuCountRange,
+			Stats: CategorizedStats_CategoryStats{
+				Rented:    computeMachineStats(bucket.rented),
+				Available: computeMachineStats(bucket.available),
+				All:       computeMachineStats(allPrices),
+			},
 		}
-		if len(prices) > 0 {
-			entry.Median, _ = stats.Median(prices)
-			entry.PercentileLow, _ = stats.Percentile(prices, 10)
-			entry.PercentileHigh, _ = stats.Percentile(prices, 90)
-		}
+
 		result = append(result, entry)
 	}
 
-	slices.SortFunc(result, compareCategorizedStats)
+	slices.SortFunc(result, compareCategories)
 
 	return result
 }
 
 type CategorizedStatsGroup struct {
 	GpuName    string
-	Categories []CategorizedStatsEntry
+	Categories []CategorizedStats_Category
 	TotalCount int
 }
 
@@ -158,12 +161,14 @@ func (machines VastAiMachineOffers) categorizedStatsByGpu() []CategorizedStatsGr
 	groups := make(map[string]*CategorizedStatsGroup)
 	for _, e := range entries {
 		g, ok := groups[e.GpuName]
+
 		if !ok {
 			g = &CategorizedStatsGroup{GpuName: e.GpuName}
 			groups[e.GpuName] = g
 		}
+
 		g.Categories = append(g.Categories, e)
-		g.TotalCount += e.Count
+		g.TotalCount += e.Stats.All.Count
 	}
 
 	result := make([]CategorizedStatsGroup, 0, len(groups))
@@ -171,7 +176,6 @@ func (machines VastAiMachineOffers) categorizedStatsByGpu() []CategorizedStatsGr
 		result = append(result, *g)
 	}
 
-	// sort by total GPU count descending
 	slices.SortFunc(result, func(a, b CategorizedStatsGroup) int {
 		return cmp.Compare(b.TotalCount, a.TotalCount)
 	})
@@ -179,34 +183,17 @@ func (machines VastAiMachineOffers) categorizedStatsByGpu() []CategorizedStatsGr
 	return result
 }
 
-// custom MarshalJSON to avoid "unsupported value: NaN" and convert cents to dollars
-func (e CategorizedStatsEntry) MarshalJSON() ([]byte, error) {
+func (e CategorizedStats_Category) MarshalJSON() ([]byte, error) {
 	type jsonEntry struct {
-		Datacenter    bool                   `json:"datacenter"`
-		GpuCountRange Category_GpuCountRange `json:"gpu_count_range"`
-		Verified      bool                   `json:"verified"`
-		Rented        bool                   `json:"rented"`
-		Count         int                    `json:"count"`
-		PriceMedian   *float64               `json:"price_median,omitempty"`
-		Price10th     *float64               `json:"price_10th_percentile,omitempty"`
-		Price90th     *float64               `json:"price_90th_percentile,omitempty"`
+		Datacenter    bool                           `json:"datacenter"`
+		GpuCountRange CategorizedStats_GpuCountRange `json:"gpu_count_range"`
+		Verified      bool                           `json:"verified"`
+		Stats         CategorizedStats_CategoryStats `json:"stats"`
 	}
-	out := jsonEntry{
+	return json.Marshal(jsonEntry{
 		Datacenter:    e.Datacenter,
 		GpuCountRange: e.GpuCountRange,
 		Verified:      e.Verified,
-		Rented:        e.Rented,
-		Count:         e.Count,
-	}
-	if !math.IsNaN(e.Median) {
-		v := e.Median / 100
-		out.PriceMedian = &v
-	}
-	if !math.IsNaN(e.PercentileLow) && !math.IsNaN(e.PercentileHigh) {
-		v1 := e.PercentileLow / 100
-		out.Price10th = &v1
-		v2 := e.PercentileHigh / 100
-		out.Price90th = &v2
-	}
-	return json.Marshal(out)
+		Stats:         e.Stats,
+	})
 }

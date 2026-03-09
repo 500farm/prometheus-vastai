@@ -214,8 +214,9 @@ func prepareGpuStats(machines VastAiMachineOffers, ts time.Time) GpuStatsRespons
 }
 
 type GpuStatsV2Model struct {
-	Name       string                  `json:"name"`
-	Categories []CategorizedStatsEntry `json:"categories"`
+	Name       string                      `json:"name"`
+	Count      int                         `json:"count"`
+	Categories []CategorizedStats_Category `json:"categories"`
 }
 
 type GpuStatsV2Response struct {
@@ -246,7 +247,7 @@ func prepareGpuStatsV2(machines VastAiMachineOffers, ts time.Time) GpuStatsV2Res
 	result := GpuStatsV2Response{
 		Url:       "/gpu-stats/v2",
 		Timestamp: ts.UTC(),
-		Notes:     []string{
+		Notes: []string{
 			"Sorted from most to least popular.",
 		},
 	}
@@ -254,6 +255,7 @@ func prepareGpuStatsV2(machines VastAiMachineOffers, ts time.Time) GpuStatsV2Res
 	for _, g := range groups {
 		result.Models = append(result.Models, GpuStatsV2Model{
 			Name:       g.GpuName,
+			Count:      g.TotalCount,
 			Categories: g.Categories,
 		})
 	}

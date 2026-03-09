@@ -1,6 +1,7 @@
 package main
 
 import (
+	"maps"
 	"math"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -61,18 +62,18 @@ func (e *VastAiPriceStatsCollectorV2) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (e *VastAiPriceStatsCollectorV2) UpdateFrom(offerCache *OfferCacheSnapshot, gpuNames []string) {
-	updateMetrics := func(labels prometheus.Labels, entry CategorizedStatsEntry) {
-		e.v2_gpu_count.With(labels).Set(float64(entry.Count))
+	updateMetrics := func(labels prometheus.Labels, s MachineStats) {
+		e.v2_gpu_count.With(labels).Set(float64(s.Count))
 
-		if !math.IsNaN(entry.Median) {
-			e.v2_ondemand_price_median_dollars.With(labels).Set(entry.Median / 100)
+		if !math.IsNaN(s.Median) {
+			e.v2_ondemand_price_median_dollars.With(labels).Set(s.Median / 100)
 		} else {
 			e.v2_ondemand_price_median_dollars.Delete(labels)
 		}
 
-		if !math.IsNaN(entry.PercentileLow) && !math.IsNaN(entry.PercentileHigh) {
-			e.v2_ondemand_price_p10_dollars.With(labels).Set(entry.PercentileLow / 100)
-			e.v2_ondemand_price_p90_dollars.With(labels).Set(entry.PercentileHigh / 100)
+		if !math.IsNaN(s.PercentileLow) && !math.IsNaN(s.PercentileHigh) {
+			e.v2_ondemand_price_p10_dollars.With(labels).Set(s.PercentileLow / 100)
+			e.v2_ondemand_price_p90_dollars.With(labels).Set(s.PercentileHigh / 100)
 		} else {
 			e.v2_ondemand_price_p10_dollars.Delete(labels)
 			e.v2_ondemand_price_p90_dollars.Delete(labels)
@@ -98,15 +99,25 @@ func (e *VastAiPriceStatsCollectorV2) UpdateFrom(offerCache *OfferCacheSnapshot,
 			continue
 		}
 
-		labels := prometheus.Labels{
-			"gpu_name": gpuName,
-			"verified": boolToYesNo(entry.Verified),
-			"rented":   boolToYesNo(entry.Rented),
-			"datacenter": boolToYesNo(entry.Datacenter),
+		baseLabels := prometheus.Labels{
+			"gpu_name":        gpuName,
+			"verified":        boolToYesNo(entry.Verified),
+			"datacenter":      boolToYesNo(entry.Datacenter),
 			"gpu_count_range": string(entry.GpuCountRange),
 		}
 
-		updateMetrics(labels, entry)
+		for _, r := range []struct {
+			label string
+			stats MachineStats
+		}{
+			{"yes", entry.Stats.Rented},
+			{"no", entry.Stats.Available},
+			{"any", entry.Stats.All},
+		} {
+			labels := maps.Clone(baseLabels)
+			labels["rented"] = r.label
+			updateMetrics(labels, r.stats)
+		}
 	}
 }
 
