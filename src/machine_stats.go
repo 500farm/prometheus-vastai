@@ -14,7 +14,6 @@ type MachineStats struct {
 	Median            float64
 	PercentileLow     float64
 	PercentileHigh    float64
-	CountByPriceRange map[int]int // price in cents, in $0.05 increments
 }
 
 type GpuInfo struct {
@@ -49,7 +48,10 @@ func (machines VastAiMachineOffers) filter(fn func(VastAiMachineOffer) bool) Vas
 	return machines.filter2(fn, nil)
 }
 
-func (machines VastAiMachineOffers) filter2(fn func(VastAiMachineOffer) bool, post func(VastAiMachineOffer) VastAiMachineOffer) VastAiMachineOffers {
+func (machines VastAiMachineOffers) filter2(
+	fn func(VastAiMachineOffer) bool,
+	post func(VastAiMachineOffer) VastAiMachineOffer,
+) VastAiMachineOffers {
 	result := make(VastAiMachineOffers, 0, len(machines))
 	for _, m := range machines {
 		if fn(m) {
@@ -110,16 +112,11 @@ func (machines VastAiMachineOffers) stats(perDlPerf bool) MachineStats {
 		Median:            math.NaN(),
 		PercentileLow:     math.NaN(),
 		PercentileHigh:    math.NaN(),
-		CountByPriceRange: make(map[int]int),
 	}
 	if len(prices) > 0 {
 		result.Median, _ = stats.Median(prices)
 		result.PercentileLow, _ = stats.Percentile(prices, 10)
 		result.PercentileHigh, _ = stats.Percentile(prices, 90)
-		for _, price := range prices {
-			r := int(math.Ceil(price/5) * 5)
-			result.CountByPriceRange[r]++
-		}
 	}
 	return result
 }

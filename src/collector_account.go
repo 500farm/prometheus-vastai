@@ -20,7 +20,9 @@ type VastAiAccountCollector struct {
 	knownInstances instanceInfoMap
 	lastPayouts    *PayoutInfo
 
-	VastAiPriceStatsCollector
+	VastAiPriceStatsCollectorV1
+	VastAiPriceStatsCollectorV2
+
 	pending_payout_dollars prometheus.Gauge
 	paid_out_dollars       prometheus.Gauge
 	last_payout_time       prometheus.Gauge
@@ -62,7 +64,8 @@ func newVastAiAccountCollector() *VastAiAccountCollector {
 		knownInstances: make(instanceInfoMap),
 		lastPayouts:    readLastPayouts(),
 
-		VastAiPriceStatsCollector: newVastAiPriceStatsCollector(),
+		VastAiPriceStatsCollectorV1: newVastAiPriceStatsCollectorV1(),
+		VastAiPriceStatsCollectorV2: newVastAiPriceStatsCollectorV2(),
 
 		pending_payout_dollars: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -203,7 +206,8 @@ func newVastAiAccountCollector() *VastAiAccountCollector {
 }
 
 func (e *VastAiAccountCollector) Describe(ch chan<- *prometheus.Desc) {
-	e.VastAiPriceStatsCollector.Describe(ch)
+	e.VastAiPriceStatsCollectorV1.Describe(ch)
+	e.VastAiPriceStatsCollectorV2.Describe(ch)
 
 	ch <- e.pending_payout_dollars.Desc()
 	ch <- e.paid_out_dollars.Desc()
@@ -237,7 +241,8 @@ func (e *VastAiAccountCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (e *VastAiAccountCollector) Collect(ch chan<- prometheus.Metric) {
-	e.VastAiPriceStatsCollector.Collect(ch)
+	e.VastAiPriceStatsCollectorV1.Collect(ch)
+	e.VastAiPriceStatsCollectorV2.Collect(ch)
 
 	ch <- e.pending_payout_dollars
 	ch <- e.paid_out_dollars
@@ -296,7 +301,8 @@ func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResult
 	}
 
 	// process offers
-	e.VastAiPriceStatsCollector.UpdateFrom(offerCache, myGpus)
+	e.VastAiPriceStatsCollectorV1.UpdateFrom(offerCache, myGpus)
+	e.VastAiPriceStatsCollectorV2.UpdateFrom(offerCache, myGpus)
 
 	// process machines
 	// TODO handle disappeared machines, changed hostnames, gpu names, ip addresses

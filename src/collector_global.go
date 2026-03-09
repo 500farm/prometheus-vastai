@@ -5,7 +5,9 @@ import (
 )
 
 type VastAiGlobalCollector struct {
-	VastAiPriceStatsCollector
+	VastAiPriceStatsCollectorV1
+	VastAiPriceStatsCollectorV2
+
 	gpu_vram_gigabytes *prometheus.GaugeVec
 	gpu_teraflops      *prometheus.GaugeVec
 	gpu_dlperf_score   *prometheus.GaugeVec
@@ -15,7 +17,8 @@ func newVastAiGlobalCollector() *VastAiGlobalCollector {
 	namespace := "vastai"
 
 	return &VastAiGlobalCollector{
-		VastAiPriceStatsCollector: newVastAiPriceStatsCollector(),
+		VastAiPriceStatsCollectorV1: newVastAiPriceStatsCollectorV1(),
+		VastAiPriceStatsCollectorV2: newVastAiPriceStatsCollectorV2(),
 
 		gpu_vram_gigabytes: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -36,7 +39,8 @@ func newVastAiGlobalCollector() *VastAiGlobalCollector {
 }
 
 func (e *VastAiGlobalCollector) Describe(ch chan<- *prometheus.Desc) {
-	e.VastAiPriceStatsCollector.Describe(ch)
+	e.VastAiPriceStatsCollectorV1.Describe(ch)
+	e.VastAiPriceStatsCollectorV2.Describe(ch)
 
 	e.gpu_vram_gigabytes.Describe(ch)
 	e.gpu_teraflops.Describe(ch)
@@ -44,7 +48,8 @@ func (e *VastAiGlobalCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (e *VastAiGlobalCollector) Collect(ch chan<- prometheus.Metric) {
-	e.VastAiPriceStatsCollector.Collect(ch)
+	e.VastAiPriceStatsCollectorV1.Collect(ch)
+	e.VastAiPriceStatsCollectorV2.Collect(ch)
 
 	e.gpu_vram_gigabytes.Collect(ch)
 	e.gpu_teraflops.Collect(ch)
@@ -54,7 +59,8 @@ func (e *VastAiGlobalCollector) Collect(ch chan<- prometheus.Metric) {
 func (e *VastAiGlobalCollector) UpdateFrom(offerCache *OfferCacheSnapshot) {
 	defer timeStage("metrics_global")()
 
-	e.VastAiPriceStatsCollector.UpdateFrom(offerCache, nil)
+	e.VastAiPriceStatsCollectorV1.UpdateFrom(offerCache, nil)
+	e.VastAiPriceStatsCollectorV2.UpdateFrom(offerCache, nil)
 
 	groupedOffers := offerCache.machines.groupByGpu()
 	for gpuName, offers := range groupedOffers {

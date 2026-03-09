@@ -22,7 +22,28 @@ cd src && go build -o ../vastai_exporter .
 # http://localhost:8622
 ```
 
-Go version: see `go.mod` (currently Go 1.26). Docker build uses `golang:1.26-alpine`.
+Go version: see `go.mod` (currently Go 1.26).
+
+### Docker
+
+The Docker image uses a multi-stage build: Debian 13 (trixie) Go image for compilation, [distroless](https://github.com/GoogleContainerTools/distroless) static image for runtime. The binary is statically compiled (`CGO_ENABLED=0`) and cross-compiled for multi-platform support via BuildKit args (`TARGETOS`/`TARGETARCH`).
+
+```sh
+# Build locally
+docker build -t vastai-exporter .
+
+# Run
+docker run --rm -p 8622:8622 vastai-exporter --key=YOUR_API_KEY
+
+# Run with persistent state directory
+docker run --rm -p 8622:8622 -v ./state:/state vastai-exporter --key=YOUR_API_KEY --state-dir=/state
+```
+
+The distroless image has no shell — you cannot `docker exec` into it. For debugging, temporarily switch the runtime stage to `golang:1.26-trixie` or use `gcr.io/distroless/static-debian13:debug`.
+
+### CI/CD
+
+GitHub Actions (`.github/workflows/docker-image.yml`) builds and pushes `500farm/vastai-exporter:latest` to Docker Hub on every push to `main`. PRs trigger a build-only check (no push). The image is built for both `linux/amd64` and `linux/arm64` using Go's native cross-compilation (no QEMU). Docker layer caching uses GitHub Actions cache (`type=gha`).
 
 ## Test Mode (Offline Development)
 
@@ -110,6 +131,8 @@ Separately, the account collector fetches `/machines`, `/instances`, `/invoices`
 | `OfferCacheSnapshot` | `offer_cache_snapshot.go` | Immutable snapshot for serving requests |
 | `CachedResponse` | `response.go` | Pre-serialized JSON (raw + gzipped) with ETag/Last-Modified |
 | `Host` | `hosts.go` | Host record grouped by host_id + geolocation |
+| `HostMapItem` | `host_map_data.go` | Grafana map item for host map visualization |
+| `CategorizedStatsEntry` | `machine_stats_v2.go` | V2 per-GPU stats entry with additional category dimensions |
 | `GeoLocation` | `maxmind.go` | Geolocation result from MaxMind, cached to disk |
 
 ## Source Files
@@ -125,14 +148,18 @@ Separately, the account collector fetches `/machines`, `/instances`, `/invoices`
 | `offer_cache.go` | `OfferCache` — thread-safe store, update logic, triggers serialization |
 | `offer_cache_snapshot.go` | Immutable snapshot for concurrent reads |
 | `serialized_responses.go` | Builds all JSON responses from machines data |
-| `parallel_json.go` | Parallel JSON marshalling/unmarshalling, gzip compression |
+| `marshaler_prealloc.go` | Pre-allocated JSON marshalling with gzip, using `go-json-experiment/json` v2 |
+| `unmarshaler.go` | Parallel JSON unmarshalling |
+| `flip_buffer.go` | Double-buffered gzip writer for zero-allocation serialization |
 | `response.go` | `CachedResponse` struct, HTTP handler with ETag/gzip support |
 | `hosts.go` | Host grouping by host_id + geolocation merge key |
 | `host_map_data.go` | Grafana-compatible host map data |
-| `machine_stats.go` | Per-GPU-model price statistics (median, percentiles, counts) |
-| `collector_global.go` | Prometheus collector for global GPU stats |
-| `collector_account.go` | Prometheus collector for per-account machine/instance stats |
-| `collector_price_stats.go` | Shared price statistics collector logic |
+| `machine_stats.go` | V1 per-GPU-model price statistics (median, percentiles, counts) |
+| `machine_stats_v2.go` | V2 categorized stats: per-GPU with datacenter, verified, rented, gpu_count_range dimensions |
+| `collector_global.go` | Prometheus collector for global GPU stats (embeds V1 + V2 price stats) |
+| `collector_account.go` | Prometheus collector for per-account machine/instance stats (embeds V1 + V2 price stats) |
+| `collector_price_stats_v1.go` | V1 price statistics Prometheus collector (labels: gpu_name, verified, rented) |
+| `collector_price_stats_v2.go` | V2 price statistics Prometheus collector (labels: gpu_name, verified, rented, datacenter, gpu_count_range) |
 | `metrics.go` | Internal exporter metrics (API latency, response sizes, processing time) |
 | `maxmind.go` | MaxMind GeoIP integration, geo cache (persisted to `{state-dir}/.vastai_geo_cache`) |
 | `test_mode.go` | `--download-test-data` and `--test-parsing` implementation |
@@ -151,6 +178,31 @@ Separately, the account collector fetches `/machines`, `/instances`, `/invoices`
 
 All JSON endpoints support `Accept-Encoding: gzip`, `If-None-Match` (ETag), and `If-Modified-Since`.
 
+## Prometheus Metrics
+
+### V1 metrics (labels: `gpu_name`, `verified`, `rented`)
+
+- `vastai_gpu_count` — GPU count per model
+- `vastai_ondemand_price_median_dollars` — median price per GPU
+- `vastai_ondemand_price_10th_percentile_dollars` — 10th percentile price
+- `vastai_ondemand_price_90th_percentile_dollars` — 90th percentile price
+- `vastai_ondemand_price_per_100dlperf_*` — same but normalized per 100 DLPerf points (global only, labels: `verified`, `rented`)
+
+V1 `verified` and `rented` labels use `"yes"`, `"no"`, `"any"` values. `"any"` aggregates are only emitted for combinations where it's useful (no separate count).
+
+### V2 metrics (labels: `gpu_name`, `verified`, `rented`, `datacenter`, `gpu_count_range`)
+
+- `vastai_v2_gpu_count` — GPU count per category
+- `vastai_v2_ondemand_price_median_dollars` — median price per category
+- `vastai_v2_ondemand_price_10th_percentile_dollars` — 10th percentile price
+- `vastai_v2_ondemand_price_90th_percentile_dollars` — 90th percentile price
+
+V2 labels are all concrete values (`"yes"`/`"no"` for booleans, `"1-3"`/`"4-7"`/`"8+"` for gpu_count_range). There are no `"any"` aggregates — consumers should sum/aggregate in their query layer.
+
+The `gpu_count_range` is determined by the portion size: for a machine with 10 GPUs where 3 are rented, the rented portion falls in `"1-3"` and the available portion in `"4-7"`.
+
+Both V1 and V2 collectors are embedded in `VastAiGlobalCollector` and `VastAiAccountCollector`, so both metric sets are served on both `/metrics` and `/metrics/global`.
+
 ## External Dependencies
 
 - **Vast.ai API** (`console.vast.ai/api/v0/`) — requires API key (`--key`). Endpoints used: `bundles`, `machines`, `instances`, `users/current/invoices`.
@@ -159,9 +211,11 @@ All JSON endpoints support `Accept-Encoding: gzip`, `If-None-Match` (ETag), and 
 ## Things to Know
 
 - **All source is in one Go package** (`package main` in `src/`). No sub-packages.
-- **JSON serialization uses `go-json-experiment/json` v2** (not `encoding/json`) for offers/machines — see `parallel_json.go`. Hosts and gpu-stats use standard `encoding/json`.
+- **Docker image is distroless** (`gcr.io/distroless/static-debian13`). No shell, no package manager. The binary is statically linked. Multi-platform: `linux/amd64` + `linux/arm64` via Go cross-compilation (no QEMU).
+- **JSON serialization uses `go-json-experiment/json` v2** (not `encoding/json`) for offers/machines — see `marshaler_prealloc.go`. Hosts and gpu-stats use standard `encoding/json`.
 - **Offers are deduplicated by ID**, keeping the copy with the highest `score` field (the API sometimes returns duplicates with different scores).
 - **Hosts are sorted by TFLOPS descending**, with lowest machine_id as tie-breaker for determinism.
 - **The geo cache** is persisted to disk so MaxMind isn't re-queried for known IPs across restarts.
 - **`--master-url`** allows slave instances to fetch offer data from a master exporter instead of hitting Vast.ai directly, reducing API load.
 - **State files** are stored in `--state-dir` (default `$HOME`): `.vastai_geo_cache`, `.vastai_last_payouts`.
+- **Static analysis**: the project passes `golangci-lint run ./...` cleanly. Keep it that way.

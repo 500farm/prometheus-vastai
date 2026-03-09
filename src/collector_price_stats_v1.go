@@ -6,7 +6,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type VastAiPriceStatsCollector struct {
+type VastAiPriceStatsCollectorV1 struct {
 	ondemand_price_median_dollars *prometheus.GaugeVec
 	ondemand_price_p10_dollars    *prometheus.GaugeVec
 	ondemand_price_p90_dollars    *prometheus.GaugeVec
@@ -18,13 +18,13 @@ type VastAiPriceStatsCollector struct {
 	gpu_count *prometheus.GaugeVec
 }
 
-func newVastAiPriceStatsCollector() VastAiPriceStatsCollector {
+func newVastAiPriceStatsCollectorV1() VastAiPriceStatsCollectorV1 {
 	namespace := "vastai"
 
 	labelNames := []string{"verified", "rented"}
 	labelNamesWithGpu := []string{"gpu_name", "verified", "rented"}
 
-	return VastAiPriceStatsCollector{
+	return VastAiPriceStatsCollectorV1{
 		ondemand_price_median_dollars: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "ondemand_price_median_dollars",
@@ -65,7 +65,7 @@ func newVastAiPriceStatsCollector() VastAiPriceStatsCollector {
 	}
 }
 
-func (e *VastAiPriceStatsCollector) Describe(ch chan<- *prometheus.Desc) {
+func (e *VastAiPriceStatsCollectorV1) Describe(ch chan<- *prometheus.Desc) {
 	e.ondemand_price_median_dollars.Describe(ch)
 	e.ondemand_price_p10_dollars.Describe(ch)
 	e.ondemand_price_p90_dollars.Describe(ch)
@@ -77,7 +77,7 @@ func (e *VastAiPriceStatsCollector) Describe(ch chan<- *prometheus.Desc) {
 	e.gpu_count.Describe(ch)
 }
 
-func (e *VastAiPriceStatsCollector) Collect(ch chan<- prometheus.Metric) {
+func (e *VastAiPriceStatsCollectorV1) Collect(ch chan<- prometheus.Metric) {
 	e.ondemand_price_median_dollars.Collect(ch)
 	e.ondemand_price_p10_dollars.Collect(ch)
 	e.ondemand_price_p90_dollars.Collect(ch)
@@ -89,7 +89,7 @@ func (e *VastAiPriceStatsCollector) Collect(ch chan<- prometheus.Metric) {
 	e.gpu_count.Collect(ch)
 }
 
-func (e *VastAiPriceStatsCollector) UpdateFrom(offerCache *OfferCacheSnapshot, gpuNames []string) {
+func (e *VastAiPriceStatsCollectorV1) UpdateFrom(offerCache *OfferCacheSnapshot, gpuNames []string) {
 	groupedOffers := offerCache.machines.groupByGpu()
 
 	updateMetrics := func(labels prometheus.Labels, stats MachineStats, needCount bool) {
