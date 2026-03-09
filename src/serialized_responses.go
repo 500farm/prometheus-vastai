@@ -23,12 +23,13 @@ func NewSerializedResponses(
 	machines VastAiMachineOffers,
 	ts time.Time,
 ) SerializedResponses {
-	responses := make(SerializedResponses, 5)
+	responses := make(SerializedResponses, 6)
 
 	responses["/offers"] = serializeOffers(&offers, ts)
 	responses["/machines"] = serializeMachines(&machines, ts)
 	responses["/hosts"] = serializeHosts(machines, ts)
 	responses["/gpu-stats"] = serializeGpuStats(machines, ts)
+	responses["/gpu-stats/v2"] = serializeGpuStatsV2(machines, ts)
 	responses["/host-map-data"] = serializeHostMap(machines, ts)
 
 	return responses
@@ -186,21 +187,21 @@ func serializeGpuStats(machines VastAiMachineOffers, ts time.Time) *CachedRespon
 func prepareGpuStats(machines VastAiMachineOffers, ts time.Time) GpuStatsResponse {
 	defer timeStage("calc_gpu_stats")()
 
-	groupedOffers := machines.groupByGpu()
+	grouped := machines.groupByGpu()
 	result := GpuStatsResponse{
 		Url:       "/gpu-stats",
 		Timestamp: ts.UTC(),
 		Note:      "Sorted from most to least popular.",
 	}
 
-	for gpuName, offers := range groupedOffers {
-		info := offers.gpuInfo()
+	for gpuName, machines := range grouped {
+		info := machines.gpuInfo()
 		if info == nil {
 			continue
 		}
 		result.Models = append(result.Models, GpuStatsModel{
 			Name:  gpuName,
-			Stats: offers.stats3(false),
+			Stats: machines.stats3(false),
 			Info:  *info,
 		})
 	}
@@ -208,6 +209,54 @@ func prepareGpuStats(machines VastAiMachineOffers, ts time.Time) GpuStatsRespons
 	slices.SortFunc(result.Models, func(a, b GpuStatsModel) int {
 		return cmp.Compare(b.Stats.All.All.Count, a.Stats.All.All.Count)
 	})
+
+	return result
+}
+
+type GpuStatsV2Model struct {
+	Name       string                  `json:"name"`
+	Categories []CategorizedStatsEntry `json:"categories"`
+}
+
+type GpuStatsV2Response struct {
+	Url       string            `json:"url"`
+	Timestamp time.Time         `json:"timestamp"`
+	Notes     []string          `json:"notes,omitempty"`
+	Models    []GpuStatsV2Model `json:"models"`
+}
+
+func serializeGpuStatsV2(machines VastAiMachineOffers, ts time.Time) *CachedResponse {
+	result := prepareGpuStatsV2(machines, ts)
+
+	defer timeStage("json_gpu_stats_v2")()
+
+	j, err := json.MarshalIndent(result, "", "    ")
+	if err != nil {
+		log.Println("ERROR:", err)
+		return buildCachedResponse(ts, "/gpu-stats/v2", nil)
+	}
+	return buildCachedResponse(ts, "/gpu-stats/v2", j)
+}
+
+func prepareGpuStatsV2(machines VastAiMachineOffers, ts time.Time) GpuStatsV2Response {
+	defer timeStage("calc_gpu_stats_v2")()
+
+	groups := machines.categorizedStatsByGpu()
+
+	result := GpuStatsV2Response{
+		Url:       "/gpu-stats/v2",
+		Timestamp: ts.UTC(),
+		Notes:     []string{
+			"Sorted from most to least popular.",
+		},
+	}
+
+	for _, g := range groups {
+		result.Models = append(result.Models, GpuStatsV2Model{
+			Name:       g.GpuName,
+			Categories: g.Categories,
+		})
+	}
 
 	return result
 }

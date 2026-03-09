@@ -158,6 +158,9 @@ func main() {
 	mux.HandleFunc("/gpu-stats", func(w http.ResponseWriter, r *http.Request) {
 		jsonHandler(w, r, offerCache.Snapshot().GpuStats())
 	})
+	mux.HandleFunc("/gpu-stats/v2", func(w http.ResponseWriter, r *http.Request) {
+		jsonHandler(w, r, offerCache.Snapshot().GpuStatsV2())
+	})
 	mux.HandleFunc("/host-map-data", func(w http.ResponseWriter, r *http.Request) {
 		jsonHandler(w, r, offerCache.Snapshot().HostMapData())
 	})
@@ -191,6 +194,7 @@ func main() {
 		_, _ = w.Write([]byte(`<a href="machines">JSON list of machines</a><br>`))
 		_, _ = w.Write([]byte(`<a href="hosts">JSON list of hosts</a><br>`))
 		_, _ = w.Write([]byte(`<a href="gpu-stats">JSON per-model stats on GPUs</a><br>`))
+		_, _ = w.Write([]byte(`<a href="gpu-stats/v2">JSON per-model stats on GPUs (categorized)</a><br>`))
 		_, _ = w.Write([]byte(`</body></html>`))
 	})
 

@@ -168,7 +168,7 @@ func (machines VastAiMachineOffers) stats3(perDlPerf bool) MachineStats3 {
 	}
 }
 
-// Custom Marshaler to avoid "unsupported value: NaN"
+// custom MarshalJSON to avoid "unsupported value: NaN" and convert cents to dollars
 func (t MachineStats) MarshalJSON() ([]byte, error) {
 	type MachineStatsJson struct {
 		Count          int      `json:"count"`

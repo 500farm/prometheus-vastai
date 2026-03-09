@@ -70,7 +70,7 @@ This saves raw API responses to `testdir/test-data/`:
 ```
 
 This reads the saved files, runs the full pipeline, and writes all endpoint outputs to `testdir/test-output/`:
-- `offers.json`, `machines.json`, `hosts.json`, `gpu-stats.json`, `host-map-data.json`
+- `offers.json`, `machines.json`, `hosts.json`, `gpu-stats.json`, `gpu-stats-v2.json`, `host-map-data.json`
 - `metrics.txt`, `metrics-global.txt`
 
 ### Comparing branches
@@ -114,7 +114,8 @@ SerializedResponses                     ← pre-serialized JSON + gzip for each 
     ├──► /offers         (raw offers, re-serialized from VastAiOffer.Raw)
     ├──► /machines       (machine-level view with chunks, rented GPUs)
     ├──► /hosts          (grouped by host_id + geolocation)
-    ├──► /gpu-stats      (per-GPU-model price/count statistics)
+    ├──► /gpu-stats      (per-GPU-model price/count statistics, V1 nested format)
+    ├──► /gpu-stats/v2   (per-GPU-model categorized statistics, flat categories)
     └──► /host-map-data  (lat/long data for Grafana map panels)
 ```
 
@@ -132,7 +133,8 @@ Separately, the account collector fetches `/machines`, `/instances`, `/invoices`
 | `CachedResponse` | `response.go` | Pre-serialized JSON (raw + gzipped) with ETag/Last-Modified |
 | `Host` | `hosts.go` | Host record grouped by host_id + geolocation |
 | `HostMapItem` | `host_map_data.go` | Grafana map item for host map visualization |
-| `CategorizedStatsEntry` | `machine_stats_v2.go` | V2 per-GPU stats entry with additional category dimensions |
+| `CategorizedStatsEntry` | `machine_stats_v2.go` | V2 per-GPU stats entry with category dimensions (datacenter, gpu_count_range, verified, rented) |
+| `CategorizedStatsGroup` | `machine_stats_v2.go` | Categorized stats grouped by GPU name, with total count for sorting |
 | `GeoLocation` | `maxmind.go` | Geolocation result from MaxMind, cached to disk |
 
 ## Source Files
@@ -155,7 +157,7 @@ Separately, the account collector fetches `/machines`, `/instances`, `/invoices`
 | `hosts.go` | Host grouping by host_id + geolocation merge key |
 | `host_map_data.go` | Grafana-compatible host map data |
 | `machine_stats.go` | V1 per-GPU-model price statistics (median, percentiles, counts) |
-| `machine_stats_v2.go` | V2 categorized stats: per-GPU with datacenter, verified, rented, gpu_count_range dimensions |
+| `machine_stats_v2.go` | V2 categorized stats: `categorizedStats()` (flat sorted list), `categorizedStatsByGpu()` (grouped + sorted by popularity), custom JSON marshaler |
 | `collector_global.go` | Prometheus collector for global GPU stats (embeds V1 + V2 price stats) |
 | `collector_account.go` | Prometheus collector for per-account machine/instance stats (embeds V1 + V2 price stats) |
 | `collector_price_stats_v1.go` | V1 price statistics Prometheus collector (labels: gpu_name, verified, rented) |
@@ -171,7 +173,8 @@ Separately, the account collector fetches `/machines`, `/instances`, `/invoices`
 | `/offers` | JSON | All individual offers (raw API fields), ~25k items, ~95 MB |
 | `/machines` | JSON | Machine-level view (one per machine), ~5.5k items, ~25 MB |
 | `/hosts` | JSON | Hosts grouped by host_id + location, ~1.2k items |
-| `/gpu-stats` | JSON | Per-GPU-model statistics (counts, price percentiles) |
+| `/gpu-stats` | JSON | Per-GPU-model statistics, V1 nested format (rented/available × verified/unverified) |
+| `/gpu-stats/v2` | JSON | Per-GPU-model statistics, V2 flat categories (datacenter, gpu_count_range, verified, rented) |
 | `/host-map-data` | JSON | Lat/long + GPU info for map visualization |
 | `/metrics` | Prometheus | Account metrics (or global if no API key) |
 | `/metrics/global` | Prometheus | Global per-GPU-model metrics |

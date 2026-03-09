@@ -34,4 +34,5 @@ func (snap *OfferCacheSnapshot) Offers() *CachedResponse      { return snap.getC
 func (snap *OfferCacheSnapshot) Machines() *CachedResponse    { return snap.getCachedResponse("/machines") }
 func (snap *OfferCacheSnapshot) Hosts() *CachedResponse       { return snap.getCachedResponse("/hosts") }
 func (snap *OfferCacheSnapshot) GpuStats() *CachedResponse    { return snap.getCachedResponse("/gpu-stats") }
+func (snap *OfferCacheSnapshot) GpuStatsV2() *CachedResponse  { return snap.getCachedResponse("/gpu-stats/v2") }
 func (snap *OfferCacheSnapshot) HostMapData() *CachedResponse { return snap.getCachedResponse("/host-map-data") }
