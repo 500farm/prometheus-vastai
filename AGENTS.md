@@ -151,8 +151,8 @@ Separately, the account collector fetches `/machines`, `/instances`, `/invoices`
 | `offer_cache.go` | `OfferCache` — thread-safe store, update logic, triggers serialization |
 | `offer_cache_snapshot.go` | Immutable snapshot for concurrent reads |
 | `serialized_responses.go` | Builds all JSON responses from machines data |
-| `marshaler_prealloc.go` | Pre-allocated JSON marshalling with gzip, using `go-json-experiment/json` v2 |
-| `unmarshaler.go` | Parallel JSON unmarshalling |
+| `offer_marshal.go` | Pre-allocated JSON marshalling with gzip, using `go-json-experiment/json` v2 |
+| `offer_unmarshal.go` | Parallel JSON unmarshalling |
 | `flip_buffer.go` | Double-buffered gzip writer for zero-allocation serialization |
 | `response.go` | `CachedResponse` struct, HTTP handler with ETag/gzip support |
 | `hosts.go` | Host grouping by host_id + geolocation merge key |
