@@ -5,7 +5,10 @@ ARG TARGETARCH
 
 WORKDIR /usr/local/go/src/build
 
-COPY src/* go.mod go.sum ./
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY src/* ./
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags='-s -w' -o /usr/local/bin/vastai_exporter .
 
 FROM gcr.io/distroless/static-debian13:latest
