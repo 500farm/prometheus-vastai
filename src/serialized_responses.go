@@ -207,7 +207,10 @@ func prepareGpuStats(machines VastAiMachineOffers, ts time.Time) GpuStatsRespons
 	}
 
 	slices.SortFunc(result.Models, func(a, b GpuStatsModel) int {
-		return cmp.Compare(b.Stats.All.All.Count, a.Stats.All.All.Count)
+		if c := cmp.Compare(b.Stats.All.All.Count, a.Stats.All.All.Count); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.Name, b.Name)
 	})
 
 	return result

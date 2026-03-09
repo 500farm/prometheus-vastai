@@ -177,7 +177,10 @@ func (machines VastAiMachineOffers) categorizedStatsByGpu() []CategorizedStatsGr
 	}
 
 	slices.SortFunc(result, func(a, b CategorizedStatsGroup) int {
-		return cmp.Compare(b.TotalCount, a.TotalCount)
+		if c := cmp.Compare(b.TotalCount, a.TotalCount); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.GpuName, b.GpuName)
 	})
 
 	return result
