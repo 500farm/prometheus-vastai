@@ -202,7 +202,7 @@ V1 `verified` and `rented` labels use `"yes"`, `"no"`, `"any"` values. `"any"` a
 
 V2 labels are all concrete values (`"yes"`/`"no"` for booleans, `"1-3"`/`"4-7"`/`"8+"` for gpu_count_range). There are no `"any"` aggregates — consumers should sum/aggregate in their query layer.
 
-The `gpu_count_range` is determined by the portion size: for a machine with 10 GPUs where 3 are rented, the rented portion falls in `"1-3"` and the available portion in `"4-7"`.
+The `gpu_count_range` is determined by the machine's total GPU count (not the rented/available portion). For example, a machine with 10 GPUs always falls in `"8+"` regardless of how many are rented.
 
 Both V1 and V2 collectors are embedded in `VastAiGlobalCollector` and `VastAiAccountCollector`, so both metric sets are served on both `/metrics` and `/metrics/global`.
 

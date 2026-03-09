@@ -87,6 +87,9 @@ func (machines VastAiMachineOffers) categorizedStats() []CategorizedStatsEntry {
 
 		pricePerGpu := float64(m.PricePerGpu)
 
+		// gpu_count_range is based on the machine's total GPU count
+		countRange := gpuCountRange(m.NumGpus)
+
 		// a machine contributes to both rented and available buckets proportionally to its rented/available GPU counts
 		type portion struct {
 			rented  bool
@@ -106,7 +109,7 @@ func (machines VastAiMachineOffers) categorizedStats() []CategorizedStatsEntry {
 				rented:        p.rented,
 				verified:      m.Verified,
 				datacenter:    m.Datacenter,
-				gpuCountRange: gpuCountRange(p.numGpus),
+				gpuCountRange: countRange,
 			}
 			prices := buckets[key]
 			for range p.numGpus {
