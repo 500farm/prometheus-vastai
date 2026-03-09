@@ -43,7 +43,7 @@ The distroless image has no shell — you cannot `docker exec` into it. For debu
 
 ### CI/CD
 
-GitHub Actions (`.github/workflows/docker-image.yml`) builds and pushes `500farm/vastai-exporter:latest` to Docker Hub on every push to `main`. PRs trigger a build-only check (no push). The image is built for both `linux/amd64` and `linux/arm64` using Go's native cross-compilation (no QEMU). Docker layer caching uses GitHub Actions cache (`type=gha`).
+GitHub Actions (`.github/workflows/docker-image.yml`) builds and pushes `500farm/vastai-exporter:latest` to Docker Hub on every push to `main`. PRs trigger a build-only check (no push). The image is built for both `linux/amd64` and `linux/arm64` using Go's native cross-compilation (no QEMU). The Dockerfile splits `go.mod`/`go.sum` into a separate `COPY` + `RUN go mod download` layer so that module downloads are cached when only source files change.
 
 ## Test Mode (Offline Development)
 

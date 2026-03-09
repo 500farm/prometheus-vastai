@@ -30,5 +30,3 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'push' }}
           tags: 500farm/vastai-exporter:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
