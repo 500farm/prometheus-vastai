@@ -16,6 +16,7 @@ In addition to per-account Prometheus metrics (url: `/metrics`), the exporter pr
 
 - Global stats over all types of GPUs in Prometheus format (url: `/metrics/global`).
 - Global stats over all types of GPUs in JSON (url: `/gpu-stats`).
+- Categorized per-GPU-model stats in JSON (url: `/gpu-stats/v2`) — broken down by datacenter, gpu_count_range, verified, with nested rented/available/all statistics.
 - List of offers available on Vast.ai in JSON (url: `/offers`).
 - List of machines available on Vast.ai in JSON (url: `/machines`).
 - List of Vast.ai hosts in JSON (url: `/hosts`).
@@ -57,7 +58,7 @@ Errors/warnings are printed to stderr and can be viewed with `docker logs`.
     Use MaxMind GeoIP web services. Specify your Account ID and License Key separated with ":".
 
 --no-geolocation=IP/NET,IP/NET,...
-    Exculde IP ranges from geolocation.
+    Exclude IP ranges from geolocation.
 ```
 
 ### Example output
@@ -256,6 +257,19 @@ vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="no",ve
 vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="yes",verified="any"} 0.5
 vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="yes",verified="no"} 0.5
 vastai_ondemand_price_90th_percentile_dollars{gpu_name="RTX 3080",rented="yes",verified="yes"} 0.65
+
+
+### Categorized GPU offer stats (V2, same GPU models, broken down by datacenter/gpu_count_range/verified)
+
+# HELP vastai_v2_gpu_count Number of GPUs offered on site (categorized)
+vastai_v2_gpu_count{datacenter="no",gpu_count_range="1-3",gpu_name="RTX 3080",rented="yes",verified="yes"} 90
+vastai_v2_gpu_count{datacenter="no",gpu_count_range="1-3",gpu_name="RTX 3080",rented="no",verified="yes"} 12
+vastai_v2_gpu_count{datacenter="no",gpu_count_range="1-3",gpu_name="RTX 3080",rented="any",verified="yes"} 102
+
+# HELP vastai_v2_ondemand_price_median_dollars Median on-demand price per GPU model (categorized)
+vastai_v2_ondemand_price_median_dollars{datacenter="no",gpu_count_range="1-3",gpu_name="RTX 3080",rented="yes",verified="yes"} 0.38
+vastai_v2_ondemand_price_median_dollars{datacenter="no",gpu_count_range="1-3",gpu_name="RTX 3080",rented="no",verified="yes"} 0.4
+vastai_v2_ondemand_price_median_dollars{datacenter="no",gpu_count_range="1-3",gpu_name="RTX 3080",rented="any",verified="yes"} 0.38
 ```
 
 ### Live examples of global stats
@@ -264,6 +278,7 @@ _Real data from Vast.ai, updated every minute._
 
 - [Global stats over all types of GPUs (Prometheus)](https://500.farm/vastai-exporter/metrics/global)
 - [Global stats over all types of GPUs (JSON)](https://500.farm/vastai-exporter/gpu-stats)
+- [Categorized per-GPU-model stats (JSON)](https://500.farm/vastai-exporter/gpu-stats/v2)
 - [List of offers available on Vast.ai (JSON)](https://500.farm/vastai-exporter/offers)
 - [List of machines available on Vast.ai (JSON)](https://500.farm/vastai-exporter/machines)
 - [List of Vast.ai hosts (JSON)](https://500.farm/vastai-exporter/hosts)

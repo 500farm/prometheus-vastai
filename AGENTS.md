@@ -133,7 +133,8 @@ Separately, the account collector fetches `/machines`, `/instances`, `/invoices`
 | `CachedResponse` | `response.go` | Pre-serialized JSON (raw + gzipped) with ETag/Last-Modified |
 | `Host` | `hosts.go` | Host record grouped by host_id + geolocation |
 | `HostMapItem` | `host_map_data.go` | Grafana map item for host map visualization |
-| `CategorizedStatsEntry` | `machine_stats_v2.go` | V2 per-GPU stats entry with category dimensions (datacenter, gpu_count_range, verified, rented) |
+| `CategorizedStats_Category` | `machine_stats_v2.go` | V2 per-GPU stats category with dimensions (datacenter, gpu_count_range, verified) and nested rented/available/all stats |
+| `CategorizedStats_CategoryStats` | `machine_stats_v2.go` | Nested stats within a category: `Rented`, `Available`, `All` (each a `MachineStats`) |
 | `CategorizedStatsGroup` | `machine_stats_v2.go` | Categorized stats grouped by GPU name, with total count for sorting |
 | `GeoLocation` | `maxmind.go` | Geolocation result from MaxMind, cached to disk |
 
@@ -174,7 +175,7 @@ Separately, the account collector fetches `/machines`, `/instances`, `/invoices`
 | `/machines` | JSON | Machine-level view (one per machine), ~5.5k items, ~25 MB |
 | `/hosts` | JSON | Hosts grouped by host_id + location, ~1.2k items |
 | `/gpu-stats` | JSON | Per-GPU-model statistics, V1 nested format (rented/available × verified/unverified) |
-| `/gpu-stats/v2` | JSON | Per-GPU-model statistics, V2 flat categories (datacenter, gpu_count_range, verified, rented) |
+| `/gpu-stats/v2` | JSON | Per-GPU-model statistics, V2 categories (datacenter, gpu_count_range, verified) with nested rented/available/all stats |
 | `/host-map-data` | JSON | Lat/long + GPU info for map visualization |
 | `/metrics` | Prometheus | Account metrics (or global if no API key) |
 | `/metrics/global` | Prometheus | Global per-GPU-model metrics |
@@ -200,7 +201,7 @@ V1 `verified` and `rented` labels use `"yes"`, `"no"`, `"any"` values. `"any"` a
 - `vastai_v2_ondemand_price_10th_percentile_dollars` — 10th percentile price
 - `vastai_v2_ondemand_price_90th_percentile_dollars` — 90th percentile price
 
-V2 labels are all concrete values (`"yes"`/`"no"` for booleans, `"1-3"`/`"4-7"`/`"8+"` for gpu_count_range). There are no `"any"` aggregates — consumers should sum/aggregate in their query layer.
+V2 `verified` and `datacenter` labels use `"yes"`/`"no"` values. `gpu_count_range` uses `"1-3"`/`"4-7"`/`"8+"`. The `rented` label has three values: `"yes"` (rented GPUs), `"no"` (available GPUs), and `"any"` (all GPUs combined). For each category, the collector emits all three `rented` variants with their respective stats.
 
 The `gpu_count_range` is determined by the machine's total GPU count (not the rented/available portion). For example, a machine with 10 GPUs always falls in `"8+"` regardless of how many are rented.
 
