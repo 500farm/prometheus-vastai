@@ -5,17 +5,19 @@ import (
 	"errors"
 	"io/fs"
 	"log"
+	"net/url"
 	"os"
+	"time"
 )
 
 type VastAiInvoices struct {
 	Current struct {
-		Charges float64 `json:"charges"`
+		Charges float64 `json:"charges"` // float in dollars
 	} `json:"current"`
 	Invoices []struct {
-		Type   string  `json:"type"`
-		Amount float64 `json:"amount"`
-		Ts     float64 `json:"timestamp"`
+		Type   string  `json:"type"`      // handling "payment" only
+		Amount float64 `json:"amount"`    // float in dollars, positive for payouts, negative for charges
+		Ts     float64 `json:"timestamp"` // unix timestamp
 	} `json:"invoices"`
 }
 
@@ -25,27 +27,87 @@ type PayoutInfo struct {
 	LastPayoutTime float64 `json:"lastPayoutTime"`
 }
 
-// TODO collect payouts since the beginning of time
+type VastAiInvoice2 struct {
+	Ts          float64 `json:"when"`         // unix timestamp
+	AmountCents int64   `json:"amount_cents"` // in cents, positive for payouts, negative for charges
+}
+
+type InvoiceState struct {
+	LastInvoice  VastAiInvoice2 `json:"lastInvoice"`
+	PaidOutCents int64          `json:"paidOutCents"`
+}
+
 func getPayouts() (*PayoutInfo, error) {
+	// old api — provides only recent invoices
+
 	var data VastAiInvoices
 	err := vastApiCall(&data, "users/current/invoices", nil, defaultTimeout)
 	if err != nil {
 		return nil, err
 	}
-	paidOut := int64(0) // in cents to avoid precision loss when summing
 	lastPayoutTime := 0.0
 	for _, invoice := range data.Invoices {
-		if invoice.Type == "payment" {
-			amount := invoice.Amount
-			if amount > 0 {
-				paidOut += int64(amount * 100)
-				if invoice.Ts > lastPayoutTime {
-					lastPayoutTime = invoice.Ts
-				}
-			}
+		if invoice.Type == "payment" && invoice.Amount > 0 && invoice.Ts > lastPayoutTime {
+			lastPayoutTime = invoice.Ts
 		}
 	}
-	return &PayoutInfo{float64(paidOut) / 100, data.Current.Charges, lastPayoutTime}, nil
+
+	// new api — provides lifetime invoices but we're trying to request incrementally
+
+	state := readInvoiceState()
+
+	args := url.Values{}
+	args.Set("select_cols", jsonArg([]string{"when", "amount_cents"}))
+
+	if state != nil {
+		args.Set("select_filters", jsonArg(map[string]any{
+			"when": map[string]any{
+				"gt": state.LastInvoice.Ts,
+			},
+		}))
+	}
+
+	var data2 []VastAiInvoice2
+	err = vastApiCall(&data2, "invoices", args, defaultTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	if state != nil {
+		log.Printf("INFO: received %d new invoices after %s", len(data2),
+			time.Unix(int64(state.LastInvoice.Ts), 0).Format(time.RFC3339))
+	} else {
+		log.Printf("INFO: received %d invoices (initial fetch)", len(data2))
+	}
+
+	paidOutCents := int64(0)
+	if state != nil {
+		paidOutCents = state.PaidOutCents
+	}
+
+	for _, invoice := range data2 {
+		if invoice.AmountCents > 0 {
+			paidOutCents += invoice.AmountCents
+		}
+	}
+
+	if len(data2) > 0 {
+		storeInvoiceState(&InvoiceState{
+			LastInvoice:  data2[len(data2)-1],
+			PaidOutCents: paidOutCents,
+		})
+	}
+
+	return &PayoutInfo{
+		PaidOut:        float64(paidOutCents) / 100,
+		PendingPayout:  data.Current.Charges,
+		LastPayoutTime: lastPayoutTime,
+	}, nil
+}
+
+func jsonArg(v any) string {
+	j, _ := json.Marshal(v)
+	return string(j)
 }
 
 func readLastPayouts() *PayoutInfo {
@@ -72,6 +134,35 @@ func storeLastPayouts(payouts *PayoutInfo) {
 		return
 	}
 	err = os.WriteFile(*stateDir+"/.vastai_last_payouts", j, 0600)
+	if err != nil {
+		log.Println("ERROR:", err)
+	}
+}
+
+func readInvoiceState() *InvoiceState {
+	j, err := os.ReadFile(*stateDir + "/.vastai_invoice_state")
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			log.Println("ERROR:", err)
+		}
+		return nil
+	}
+	var state InvoiceState
+	err = json.Unmarshal(j, &state)
+	if err != nil {
+		log.Println("ERROR:", err)
+		return nil
+	}
+	return &state
+}
+
+func storeInvoiceState(state *InvoiceState) {
+	j, err := json.Marshal(state)
+	if err != nil {
+		log.Println("ERROR:", err)
+		return
+	}
+	err = os.WriteFile(*stateDir+"/.vastai_invoice_state", j, 0600)
 	if err != nil {
 		log.Println("ERROR:", err)
 	}
