@@ -220,6 +220,6 @@ Both V1 and V2 collectors are embedded in `VastAiGlobalCollector` and `VastAiAcc
 - **Offers are deduplicated by ID**, keeping the copy with the highest `score` field (the API sometimes returns duplicates with different scores).
 - **Hosts are sorted by TFLOPS descending**, with lowest machine_id as tie-breaker for determinism.
 - **The geo cache** is persisted to disk so MaxMind isn't re-queried for known IPs across restarts.
-- **`--master-url`** allows slave instances to fetch offer data from a master exporter instead of hitting Vast.ai directly, reducing API load.
+- **`--master-url`** allows slave instances to fetch offer data from a master exporter instead of hitting Vast.ai directly, reducing API load. The slave sends `If-Modified-Since` on subsequent requests; if the master returns 304, the slave keeps its cached data and skips reprocessing. The default `--update-interval` is 5s in master mode (vs 1m when hitting the Vast.ai API directly).
 - **State files** are stored in `--state-dir` (default `$HOME`): `.vastai_geo_cache`, `.vastai_last_payouts`.
 - **Static analysis**: the project passes `golangci-lint run ./...` cleanly. Keep it that way.

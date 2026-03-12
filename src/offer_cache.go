@@ -66,6 +66,12 @@ func (cache *OfferCache) InitialUpdateFrom(apiRes VastAiApiResults) error {
 	return nil
 }
 
+func (cache *OfferCache) Timestamp() time.Time {
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
+	return cache.ts
+}
+
 func (cache *OfferCache) ClearMachines() {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()

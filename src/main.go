@@ -25,8 +25,8 @@ var (
 	).Default("").String()
 	updateInterval = kingpin.Flag(
 		"update-interval",
-		"How often to query Vast.ai for updates",
-	).Default("1m").Duration()
+		"How often to query Vast.ai for updates (default 5s with --master-url, 1m otherwise)",
+	).Default("0").Duration()
 	stateDir = kingpin.Flag(
 		"state-dir",
 		"Path to store state files (default $HOME)",
@@ -73,6 +73,14 @@ func main() {
 	kingpin.Version(version.Print("vastai_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
+
+	if *updateInterval == 0 {
+		if *masterUrl != "" {
+			*updateInterval = 5 * time.Second
+		} else {
+			*updateInterval = 1 * time.Minute
+		}
+	}
 
 	log.SetFlags(0)
 

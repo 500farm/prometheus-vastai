@@ -25,10 +25,24 @@ func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 
 	start := time.Now()
 
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(url)
+	client := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
+	}
+	if ts := offerCache.Timestamp(); !ts.IsZero() {
+		req.Header.Set("If-Modified-Since", ts.UTC().Format(http.TimeFormat))
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusNotModified {
+		log.Println("INFO: Master returned 304 Not Modified")
+		return nil
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -37,15 +51,17 @@ func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 		}
 		return fmt.Errorf(`URL %s returned "%s"`, url, resp.Status)
 	}
-	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
 
+	elapsed := time.Since(start)
+	log.Println("INFO: GET", url, "took", elapsed)
+
 	if metrics != nil {
-		metrics.ObserveAPIDuration("master/offers", time.Since(start).Seconds())
+		metrics.ObserveAPIDuration("master/offers", elapsed.Seconds())
 		metrics.ObserveAPIResponseSize("master/offers", len(body))
 	}
 
@@ -68,6 +84,7 @@ func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 	}
 	result.ts = j.Timestamp
 	result.offers = j.Offers
+
 	return nil
 }
 
