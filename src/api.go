@@ -151,9 +151,16 @@ func vastApiCallRaw(endpoint string, args url.Values, timeout time.Duration) ([]
 
 	start := time.Now()
 
-	client := &http.Client{Timeout: timeout}
 	url := "https://console.vast.ai/api/v0/" + endpoint + "/?" + args.Encode()
-	resp, err := client.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("User-Agent", *userAgent)
+
+	client := &http.Client{Timeout: timeout}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

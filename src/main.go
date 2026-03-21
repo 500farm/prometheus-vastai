@@ -43,6 +43,10 @@ var (
 		"no-geolocation",
 		"Exclude IP ranges from geolocation",
 	).PlaceHolder("IP[/NN],IP[/NN],...").String()
+	userAgent = kingpin.Flag(
+		"user-agent",
+		"User-Agent header to use for Vast.ai API requests.",
+	).Default("vastai-exporter/1.0 (+https://github.com/500farm/prometheus-vastai)").String()
 	downloadTestDataFlag = kingpin.Flag(
 		"download-test-data",
 		"Download raw API data to state-dir/test-data/ and exit.",
