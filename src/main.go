@@ -196,7 +196,9 @@ func main() {
 			http.NotFound(w, r)
 			return
 		}
-		_, _ = w.Write([]byte(`<html><head><title>Vast.ai Exporter</title></head><body><h1>Vast.ai Exporter</h1>`))
+		_, _ = w.Write([]byte(`<html><head><title>Vast.ai Exporter</title></head>`))
+		_, _ = w.Write([]byte(`<body style="font-family: Helvetica, Arial, sans-serif; padding: 0.5cm;">`))
+		_, _ = w.Write([]byte(`<h1>Vast.ai Exporter</h1>`))
 		if useAccount {
 			_, _ = w.Write([]byte(`<a href="metrics">Account stats</a><br><a href="metrics/global">Per-model stats on GPUs</a><br><br>`))
 		} else {
@@ -207,6 +209,7 @@ func main() {
 		_, _ = w.Write([]byte(`<a href="hosts">JSON list of hosts</a><br>`))
 		_, _ = w.Write([]byte(`<a href="gpu-stats">JSON per-model stats on GPUs</a><br>`))
 		_, _ = w.Write([]byte(`<a href="gpu-stats/v2">JSON per-model stats on GPUs (categorized)</a><br>`))
+		_, _ = w.Write([]byte(`<a href="host-map-data">Data source for map of hosts</a><br>`))
 		_, _ = w.Write([]byte(`</body></html>`))
 	})
 
