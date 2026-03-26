@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -196,21 +198,53 @@ func main() {
 			http.NotFound(w, r)
 			return
 		}
-		_, _ = w.Write([]byte(`<html><head><title>Vast.ai Exporter</title></head>`))
-		_, _ = w.Write([]byte(`<body style="font-family: Helvetica, Arial, sans-serif; padding: 0.5cm;">`))
-		_, _ = w.Write([]byte(`<h1>Vast.ai Exporter</h1>`))
+		var metricsLinks []string
 		if useAccount {
-			_, _ = w.Write([]byte(`<a href="metrics">Account stats</a><br><a href="metrics/global">Per-model stats on GPUs</a><br><br>`))
+			metricsLinks = []string{
+				`<h2>Prometheus endpoints</h2>`,
+				`<p><a href="metrics">Account stats</a></p>`,
+				`<p><a href="metrics/global">Per-model stats on GPUs</a></p>`,
+			}
 		} else {
-			_, _ = w.Write([]byte(`<a href="metrics">Per-model stats on GPUs</a><br><br>`))
+			metricsLinks = []string{
+				`<h2>Prometheus endpoints</h2>`,
+				`<p><a href="metrics">Per-model stats on GPUs</a></p>`,
+			}
 		}
-		_, _ = w.Write([]byte(`<a href="offers">JSON list of offers</a><br>`))
-		_, _ = w.Write([]byte(`<a href="machines">JSON list of machines</a><br>`))
-		_, _ = w.Write([]byte(`<a href="hosts">JSON list of hosts</a><br>`))
-		_, _ = w.Write([]byte(`<a href="gpu-stats">JSON per-model stats on GPUs</a><br>`))
-		_, _ = w.Write([]byte(`<a href="gpu-stats/v2">JSON per-model stats on GPUs (categorized)</a><br>`))
-		_, _ = w.Write([]byte(`<a href="host-map-data">Data source for map of hosts</a><br>`))
-		_, _ = w.Write([]byte(`</body></html>`))
+		lines := []string{
+			`<html>`,
+			`<head>`,
+			`<title>Vast.ai Exporter</title>`,
+			`<style>`,
+			`  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }`,
+			`  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 15px; line-height: 1.6; color: #1a1a1a; background: #f9f9fb; max-width: 640px; margin: 0 0 0 60px; padding: 0; }`,
+			`  h1 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 8px; }`,
+			`  .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 48px; }`,
+			`  h2 { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #999; margin: 32px 0 12px; }`,
+			`  p { margin: 6px 0; }`,
+			`  a { color: #0066cc; text-decoration: none; }`,
+			`  a:hover { text-decoration: underline; }`,
+			`  hr { border: none; border-top: 1px solid #e5e5e5; margin: 40px 0; }`,
+			`</style>`,
+			`</head>`,
+			`<body>`,
+			`<h1>Vast.ai Exporter</h1>`,
+			`<p class="subtitle">Prometheus/JSON exporter for Vast.ai GPU marketplace</p>`,
+		}
+		lines = append(lines, metricsLinks...)
+		lines = append(lines,
+			`<hr>`,
+			`<h2>JSON endpoints</h2>`,
+			`<p><a href="offers">List of offers</a></p>`,
+			`<p><a href="machines">List of machines</a></p>`,
+			`<p><a href="hosts">List of hosts</a></p>`,
+			`<p><a href="gpu-stats">Per-model stats on GPUs</a></p>`,
+			`<p><a href="gpu-stats/v2">Per-model stats on GPUs (categorized)</a></p>`,
+			`<p><a href="host-map-data">Data source for map of hosts</a></p>`,
+			`</body>`,
+			`</html>`,
+		)
+		fmt.Fprint(w, strings.Join(lines, "\n"))
 	})
 
 	// "test parsing mode": fetch all endpoints to files and exit.
