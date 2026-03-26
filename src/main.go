@@ -217,7 +217,7 @@ func main() {
 			`<title>Vast.ai Exporter</title>`,
 			`<style>`,
 			`  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }`,
-			`  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 15px; line-height: 1.6; color: #1a1a1a; background: #f9f9fb; max-width: 640px; margin: 0 0 0 60px; padding: 0; }`,
+			`  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 15px; line-height: 1.6; color: #1a1a1a; background: #f9f9fb; max-width: 640px; margin: 40px 0 0 60px; padding: 0; }`,
 			`  h1 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 8px; }`,
 			`  .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 48px; }`,
 			`  h2 { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #999; margin: 32px 0 12px; }`,
