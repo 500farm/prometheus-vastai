@@ -23,14 +23,23 @@ func NewSerializedResponses(
 	machines VastAiMachineOffers,
 	ts time.Time,
 ) SerializedResponses {
-	responses := make(SerializedResponses, 6)
+	responses := make(SerializedResponses, 10)
 
 	responses["/offers"] = serializeOffers(&offers, ts)
 	responses["/machines"] = serializeMachines(&machines, ts)
 	responses["/hosts"] = serializeHosts(machines, ts)
 	responses["/gpu-stats"] = serializeGpuStats(machines, ts)
 	responses["/gpu-stats/v2"] = serializeGpuStatsV2(machines, ts)
-	responses["/host-map-data"] = serializeHostMap(machines, ts)
+
+	hostMapData := prepareHostMap(machines)
+
+	responses["/host-map-data"] = hostMapData.serialize("/host-map-data", ts)
+	responses["/host-map-data/dc"] = hostMapData.filter(func(item HostMapItem) bool { return item.Datacenter }).
+		serialize("/host-map-data/dc", ts)
+	responses["/host-map-data/non-dc"] = hostMapData.filter(func(item HostMapItem) bool { return !item.Datacenter }).
+		serialize("/host-map-data/non-dc", ts)
+	responses["/host-map-data/top-10"] = hostMapData.top(10).serialize("/host-map-data/top-10", ts)
+	responses["/host-map-data/top-100"] = hostMapData.top(100).serialize("/host-map-data/top-100", ts)
 
 	return responses
 }
@@ -271,20 +280,42 @@ func prepareGpuStatsV2(machines VastAiMachineOffers, ts time.Time) GpuStatsV2Res
 	return result
 }
 
-func serializeHostMap(machines VastAiMachineOffers, ts time.Time) *CachedResponse {
-	mapItems := prepareHostMap(machines)
-
+func (items HostMapItems) serialize(url string, ts time.Time) *CachedResponse {
 	defer timeStage("json_host_map")()
 
 	result, err := json.MarshalIndent(HostMapResponse{
-		Items: mapItems,
+		Items: items,
+		Notes: []string{
+			"All hosts: /host-map-data",
+			"DC hosts: /host-map-data/dc",
+			"Non-DC hosts: /host-map-data/non-dc",
+			"Top 100 hosts: /host-map-data/top-100",
+			"Top 10 hosts: /host-map-data/top-10",
+		},
 	}, "", "    ")
 	if err != nil {
 		log.Println("ERROR:", err)
-		return buildCachedResponse(ts, "/host-map-data", nil)
+		return buildCachedResponse(ts, url, nil)
 	}
 
-	return buildCachedResponse(ts, "/host-map-data", result)
+	return buildCachedResponse(ts, url, result)
+}
+
+func (items HostMapItems) filter(keep func(HostMapItem) bool) HostMapItems {
+	filtered := make(HostMapItems, 0, len(items))
+	for _, item := range items {
+		if keep(item) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
+func (items HostMapItems) top(n int) HostMapItems {
+	if n < len(items) {
+		return items[:n]
+	}
+	return items
 }
 
 func prepareHostMap(machines VastAiMachineOffers) HostMapItems {

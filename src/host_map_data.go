@@ -35,6 +35,7 @@ type HostMapItem struct {
 type HostMapItems []HostMapItem
 
 type HostMapResponse struct {
+	Notes []string     `json:"notes"`
 	Items HostMapItems `json:"items"`
 }
 

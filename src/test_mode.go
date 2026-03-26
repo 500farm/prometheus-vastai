@@ -107,6 +107,10 @@ func testFetchAllEndpoints(mux http.Handler) {
 		{"/gpu-stats", "gpu-stats.json"},
 		{"/gpu-stats/v2", "gpu-stats-v2.json"},
 		{"/host-map-data", "host-map-data.json"},
+		{"/host-map-data/dc", "host-map-data-dc.json"},
+		{"/host-map-data/non-dc", "host-map-data-non-dc.json"},
+		{"/host-map-data/top-10", "host-map-data-top-10.json"},
+		{"/host-map-data/top-100", "host-map-data-top-100.json"},
 		{"/metrics", "metrics.txt"},
 		{"/metrics/global", "metrics-global.txt"},
 	} {
