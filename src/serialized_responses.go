@@ -147,7 +147,10 @@ func serializeHosts(machines VastAiMachineOffers, ts time.Time) *CachedResponse 
 		Url:       "/hosts",
 		Timestamp: ts.UTC(),
 		Count:     len(hosts),
-		Note:      "Sorted by total TFLOPS (largest first). Hosts with multiple geo locations are split into multiple records.",
+		Notes:     []string{
+			"Sorted by total TFLOPS (largest first).",
+			"Hosts with multiple geo locations are split into multiple records.",
+		},
 		Hosts:     &hosts,
 	}, "", "    ")
 	if err != nil {
@@ -167,7 +170,7 @@ type GpuStatsModel struct {
 type GpuStatsResponse struct {
 	Url       string          `json:"url"`
 	Timestamp time.Time       `json:"timestamp"`
-	Note      string          `json:"note,omitempty"`
+	Notes     []string        `json:"notes,omitempty"`
 	Models    []GpuStatsModel `json:"models"`
 }
 
@@ -191,7 +194,9 @@ func prepareGpuStats(machines VastAiMachineOffers, ts time.Time) GpuStatsRespons
 	result := GpuStatsResponse{
 		Url:       "/gpu-stats",
 		Timestamp: ts.UTC(),
-		Note:      "Sorted from most to least popular.",
+		Notes:     []string{
+			"Sorted from most to least popular.",
+		},
 	}
 
 	for gpuName, machines := range grouped {

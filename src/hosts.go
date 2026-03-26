@@ -28,7 +28,7 @@ type HostsResponse struct {
 	Url       string    `json:"url"`
 	Timestamp time.Time `json:"timestamp"`
 	Count     int       `json:"count"`
-	Note      string    `json:"note,omitempty"`
+	Notes     []string  `json:"notes,omitempty"`
 	Hosts     *Hosts    `json:"hosts"`
 }
 
