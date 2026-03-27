@@ -71,7 +71,7 @@ This saves raw API responses to `testdir/test-data/`:
 
 This reads the saved files, runs the full pipeline, and writes all endpoint outputs to `testdir/test-output/`:
 - `offers.json`, `machines.json`, `hosts.json`, `gpu-stats.json`, `gpu-stats-v2.json`
-- `host-map-data.json`, `host-map-data-dc.json`, `host-map-data-non-dc.json`, `host-map-data-top-10.json`, `host-map-data-top-100.json`
+- `host-map-data.json`, `host-map-data-dc.json`, `host-map-data-non-dc.json`, `host-map-data-top-10.json`, `host-map-data-top-100.json`  (one file per `?filter=` value)
 - `metrics.txt`, `metrics-global.txt`
 
 ### Comparing branches
@@ -116,12 +116,13 @@ SerializedResponses                     ← pre-serialized JSON + gzip for each 
     ├──► /machines       (machine-level view with chunks, rented GPUs)
     ├──► /hosts          (grouped by host_id + geolocation)
     ├──► /gpu-stats      (per-GPU-model price/count statistics, V1 nested format)
-    ├──► /gpu-stats/v2        (per-GPU-model categorized statistics, flat categories)
-    ├──► /host-map-data       (lat/long data for Grafana map panels)
-    ├──► /host-map-data/dc    (datacenters only)
-    ├──► /host-map-data/non-dc (non-datacenters only)
-    ├──► /host-map-data/top-10  (top 10 hosts by TFLOPS)
-    └──► /host-map-data/top-100 (top 100 hosts by TFLOPS)
+    ├──► /gpu-stats/v2      (per-GPU-model categorized statistics, flat categories)
+    └──► /host-map-data     (lat/long data for Grafana map panels)
+                               ?filter=all      all hosts (default)
+                               ?filter=dc       datacenter hosts only
+                               ?filter=non-dc   non-datacenter hosts only
+                               ?filter=top-10   top 10 hosts by TFLOPS
+                               ?filter=top-100  top 100 hosts by TFLOPS
 ```
 
 Separately, the account collector fetches `/machines`, `/instances`, `/invoices` for per-account Prometheus metrics.
@@ -181,11 +182,7 @@ Separately, the account collector fetches `/machines`, `/instances`, `/invoices`
 | `/hosts` | JSON | Hosts grouped by host_id + location, ~1.2k items |
 | `/gpu-stats` | JSON | Per-GPU-model statistics, V1 nested format (rented/available × verified/unverified) |
 | `/gpu-stats/v2` | JSON | Per-GPU-model statistics, V2 categories (datacenter, gpu_count_range, verified) with nested rented/available/all stats |
-| `/host-map-data` | JSON | Lat/long + GPU info for map visualization (all hosts) |
-| `/host-map-data/dc` | JSON | Same, filtered to datacenter hosts only |
-| `/host-map-data/non-dc` | JSON | Same, filtered to non-datacenter hosts only |
-| `/host-map-data/top-10` | JSON | Same, top 10 hosts by TFLOPS |
-| `/host-map-data/top-100` | JSON | Same, top 100 hosts by TFLOPS |
+| `/host-map-data` | JSON | Lat/long + GPU info for map visualization. Optional `?filter=` param: `all` (default), `dc`, `non-dc`, `top-10`, `top-100` |
 | `/metrics` | Prometheus | Account metrics (or global if no API key) |
 | `/metrics/global` | Prometheus | Global per-GPU-model metrics |
 

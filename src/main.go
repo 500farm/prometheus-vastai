@@ -175,20 +175,9 @@ func main() {
 	mux.HandleFunc("/gpu-stats/v2", func(w http.ResponseWriter, r *http.Request) {
 		jsonHandler(w, r, offerCache.Snapshot().GpuStatsV2())
 	})
-	mux.HandleFunc("/host-map-data/dc", func(w http.ResponseWriter, r *http.Request) {
-		jsonHandler(w, r, offerCache.Snapshot().HostMapDataDC())
-	})
-	mux.HandleFunc("/host-map-data/non-dc", func(w http.ResponseWriter, r *http.Request) {
-		jsonHandler(w, r, offerCache.Snapshot().HostMapDataNonDC())
-	})
-	mux.HandleFunc("/host-map-data/top-10", func(w http.ResponseWriter, r *http.Request) {
-		jsonHandler(w, r, offerCache.Snapshot().HostMapDataTop10())
-	})
-	mux.HandleFunc("/host-map-data/top-100", func(w http.ResponseWriter, r *http.Request) {
-		jsonHandler(w, r, offerCache.Snapshot().HostMapDataTop100())
-	})
 	mux.HandleFunc("/host-map-data", func(w http.ResponseWriter, r *http.Request) {
-		jsonHandler(w, r, offerCache.Snapshot().HostMapData())
+		filter := r.URL.Query().Get("filter")
+		jsonHandler(w, r, offerCache.Snapshot().HostMapData(filter))
 	})
 
 	mux.HandleFunc("/metrics/global", func(w http.ResponseWriter, r *http.Request) {
