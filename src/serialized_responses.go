@@ -283,6 +283,11 @@ func prepareGpuStatsV2(machines VastAiMachineOffers, ts time.Time) GpuStatsV2Res
 func (items HostMapItems) serialize(url string, ts time.Time) *CachedResponse {
 	defer timeStage("json_host_map")()
 
+	items = append(items, HostMapItem{
+		TflopsSqrt: 0,
+		Note:       "zero size reference point",
+	})
+
 	result, err := json.MarshalIndent(HostMapResponse{
 		Items: items,
 		Notes: []string{
