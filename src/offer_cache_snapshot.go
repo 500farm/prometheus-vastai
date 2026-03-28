@@ -37,7 +37,7 @@ func (snap *OfferCacheSnapshot) GpuStats() *CachedResponse   { return snap.getCa
 func (snap *OfferCacheSnapshot) GpuStatsV2() *CachedResponse { return snap.getCachedResponse("/gpu-stats/v2") }
 func (snap *OfferCacheSnapshot) HostMapData(filter string) *CachedResponse {
 	if filter == "" {
-		filter = "all"
+		return snap.getCachedResponse("/host-map-data")
 	}
 	return snap.getCachedResponse("/host-map-data?filter=" + filter)
 }

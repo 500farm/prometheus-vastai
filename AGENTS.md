@@ -118,11 +118,12 @@ SerializedResponses                     ← pre-serialized JSON + gzip for each 
     ├──► /gpu-stats      (per-GPU-model price/count statistics, V1 nested format)
     ├──► /gpu-stats/v2      (per-GPU-model categorized statistics, flat categories)
     └──► /host-map-data     (lat/long data for Grafana map panels)
-                               ?filter=all      all hosts (default)
-                               ?filter=dc       datacenter hosts only
-                               ?filter=non-dc   non-datacenter hosts only
-                               ?filter=top-10   top 10 hosts by TFLOPS
-                               ?filter=top-100  top 100 hosts by TFLOPS
+                               (no ?filter)     all hosts, no zero point
+                               ?filter=all      all hosts + zero point
+                               ?filter=dc       datacenter hosts only + zero point
+                               ?filter=non-dc   non-datacenter hosts only + zero point
+                               ?filter=top-10   top 10 hosts by TFLOPS + zero point
+                               ?filter=top-100  top 100 hosts by TFLOPS + zero point
 ```
 
 Separately, the account collector fetches `/machines`, `/instances`, `/invoices` for per-account Prometheus metrics.
@@ -182,7 +183,7 @@ Separately, the account collector fetches `/machines`, `/instances`, `/invoices`
 | `/hosts` | JSON | Hosts grouped by host_id + location, ~1.2k items |
 | `/gpu-stats` | JSON | Per-GPU-model statistics, V1 nested format (rented/available × verified/unverified) |
 | `/gpu-stats/v2` | JSON | Per-GPU-model statistics, V2 categories (datacenter, gpu_count_range, verified) with nested rented/available/all stats |
-| `/host-map-data` | JSON | Lat/long + GPU info for map visualization. Optional `?filter=` param: `all` (default), `dc`, `non-dc`, `top-10`, `top-100` |
+| `/host-map-data` | JSON | Lat/long + GPU info for map visualization. Without `?filter`: all hosts, no extras. With `?filter=all\|dc\|non-dc\|top-10\|top-100`: filtered subset with a zero-size reference point appended as the last item |
 | `/metrics` | Prometheus | Account metrics (or global if no API key) |
 | `/metrics/global` | Prometheus | Global per-GPU-model metrics |
 

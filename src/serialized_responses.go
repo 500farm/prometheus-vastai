@@ -23,7 +23,7 @@ func NewSerializedResponses(
 	machines VastAiMachineOffers,
 	ts time.Time,
 ) SerializedResponses {
-	responses := make(SerializedResponses, 6)
+	responses := make(SerializedResponses, 7)
 
 	responses["/offers"] = serializeOffers(&offers, ts)
 	responses["/machines"] = serializeMachines(&machines, ts)
@@ -33,13 +33,14 @@ func NewSerializedResponses(
 
 	hostMapData := prepareHostMap(machines)
 
-	responses["/host-map-data?filter=all"] = hostMapData.serialize("/host-map-data?filter=all", ts)
+	responses["/host-map-data"] = hostMapData.serialize("/host-map-data", ts, false)
+	responses["/host-map-data?filter=all"] = hostMapData.serialize("/host-map-data?filter=all", ts, true)
 	responses["/host-map-data?filter=dc"] = hostMapData.filter(func(item HostMapItem) bool { return item.Datacenter }).
-		serialize("/host-map-data?filter=dc", ts)
+		serialize("/host-map-data?filter=dc", ts, true)
 	responses["/host-map-data?filter=non-dc"] = hostMapData.filter(func(item HostMapItem) bool { return !item.Datacenter }).
-		serialize("/host-map-data?filter=non-dc", ts)
-	responses["/host-map-data?filter=top-10"] = hostMapData.top(10).serialize("/host-map-data?filter=top-10", ts)
-	responses["/host-map-data?filter=top-100"] = hostMapData.top(100).serialize("/host-map-data?filter=top-100", ts)
+		serialize("/host-map-data?filter=non-dc", ts, true)
+	responses["/host-map-data?filter=top-10"] = hostMapData.top(10).serialize("/host-map-data?filter=top-10", ts, true)
+	responses["/host-map-data?filter=top-100"] = hostMapData.top(100).serialize("/host-map-data?filter=top-100", ts, true)
 
 	return responses
 }
@@ -280,13 +281,20 @@ func prepareGpuStatsV2(machines VastAiMachineOffers, ts time.Time) GpuStatsV2Res
 	return result
 }
 
-func (items HostMapItems) serialize(url string, ts time.Time) *CachedResponse {
+func (items HostMapItems) serialize(url string, ts time.Time, withZeroPoint bool) *CachedResponse {
 	defer timeStage("json_host_map")()
 
+	serializedItems := items
+	if withZeroPoint {
+		serializedItems = append(serializedItems, HostMapItem{
+			Note: "zero size reference point",
+		})
+	}
+
 	result, err := json.MarshalIndent(HostMapResponse{
-		Items: items,
+		Items: serializedItems,
 		Notes: []string{
-			"Use ?filter= to select a subset: all (default), dc, non-dc, top-10, top-100",
+			"Use ?filter= to select a subset: all, dc, non-dc, top-10, top-100",
 		},
 	}, "", "    ")
 	if err != nil {
