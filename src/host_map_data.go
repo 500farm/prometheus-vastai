@@ -30,7 +30,6 @@ type HostMapItem struct {
 	Datacenter  bool         `json:"datacenter"`
 	Location    *MapLocation `json:"location"`
 	Connection  string       `json:"connection"`
-	Note        string       `json:"note,omitempty"`
 }
 
 type HostMapItems []HostMapItem
