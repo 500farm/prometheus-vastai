@@ -281,9 +281,19 @@ func (e *VastAiAccountCollector) UpdateFrom(info VastAiApiResults, offerCache *O
 	e.UpdateMachinesAndInstances(info, offerCache)
 	e.UpdatePayouts(info)
 
-	log.Println("INFO:",
-		len(*info.myMachines), "my machines,",
-		len(*info.myInstances), "my instances, payouts:", *info.payouts)
+	machinesCount := -1
+	if info.myMachines != nil {
+		machinesCount = len(*info.myMachines)
+	}
+	instancesCount := -1
+	if info.myInstances != nil {
+		instancesCount = len(*info.myInstances)
+	}
+	var payoutsInfo any = "(nil)"
+	if info.payouts != nil {
+		payoutsInfo = *info.payouts
+	}
+	log.Println("INFO:", machinesCount, "my machines,", instancesCount, "my instances, payouts:", payoutsInfo)
 }
 
 func (e *VastAiAccountCollector) UpdateMachinesAndInstances(info VastAiApiResults, offerCache *OfferCacheSnapshot) {
