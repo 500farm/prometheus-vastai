@@ -88,15 +88,39 @@ func getRawOffersFromMaster(masterUrl string, result *VastAiApiResults) error {
 	return nil
 }
 
+// minimum number of offers in a /bundles response for it to be considered complete
+const minOffers = 20000
+
 func getRawOffersFromApi(result *VastAiApiResults) error {
 	var t struct {
-		Offers VastAiRawOffers `json:"offers"`
+		Offers      VastAiRawOffers `json:"offers"`
+		Truncated   bool            `json:"truncated"`
+		Warning     string          `json:"warning"`
+		Deprecation jsontext.Value  `json:"deprecation"`
 	}
 
 	if err := vastApiCall(&t, "bundles", url.Values{
 		"q": {`{"external":{"eq":"false"},"type":"on-demand","disable_bundling":true}`},
 	}, bundleTimeout); err != nil {
 		return err
+	}
+
+	logApiNotice("warning", t.Warning)
+	logApiNotice("deprecation", string(t.Deprecation))
+
+	if t.Truncated {
+		if metrics != nil {
+			metrics.ObserveAPIError("bundles", "truncated")
+		}
+		return fmt.Errorf("endpoint /bundles returned a truncated response (%d offers)", len(t.Offers))
+	}
+
+	if len(t.Offers) < minOffers {
+		if metrics != nil {
+			metrics.ObserveAPIError("bundles", "incomplete")
+		}
+		return fmt.Errorf("endpoint /bundles returned only %d offers, expected at least %d",
+			len(t.Offers), minOffers)
 	}
 
 	defer timeStage("parse_api_post")()
@@ -135,4 +159,11 @@ func (offer VastAiRawOffer) fixFloats() {
 			}
 		}
 	}
+}
+
+func logApiNotice(kind string, value string) {
+	if value == "" || value == "null" {
+		return
+	}
+	log.Println("WARN:", "/bundles", kind+":", value)
 }

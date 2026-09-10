@@ -225,8 +225,39 @@ Both V1 and V2 collectors are embedded in `VastAiGlobalCollector` and `VastAiAcc
 - **Docker image is distroless** (`gcr.io/distroless/static-debian13`). No shell, no package manager. The binary is statically linked. Multi-platform: `linux/amd64` + `linux/arm64` via Go cross-compilation (no QEMU).
 - **JSON serialization uses `go-json-experiment/json` v2** (not `encoding/json`) for offers/machines — see `marshaler_prealloc.go`. Hosts and gpu-stats use standard `encoding/json`.
 - **Offers are deduplicated by ID**, keeping the copy with the highest `score` field (the API sometimes returns duplicates with different scores).
+- **Incomplete `/bundles` responses are rejected.** `getRawOffersFromApi()` (`api_offers_raw.go`) has two guards, both applied before any decoding or serialization:
+  1. the top-level `truncated` field being `true`, and
+  2. fewer than `minOffers` (currently **20000**) offers in the response.
+
+  Either is treated as an ordinary API error: `result.offers` stays `nil`, `OfferCache.UpdateFrom()` skips the update, and the previous good snapshot keeps being served. They bump `vastai_exporter_api_errors_total{endpoint="bundles"}` with `status="truncated"` and `status="incomplete"` respectively.
+
+  Background: Vast.ai served ~8,600 offers instead of ~30,000 for 8 days in Aug-Sep 2026, and every downstream store recorded the truncated data as if it were real. The `truncated` field did **not** exist then (the Mar-2026 test fixture has `offers` as its only top-level key) — Vast.ai has since added it, so it is the better signal, but the count check stays as a backstop for truncation that isn't flagged, which is exactly what happened in August. A missing `truncated` field unmarshals to `false`, so older/other responses still work.
+
+  `minOffers` tracks the size of the marketplace and needs raising as it grows. For reference: ~30,000 offers now, ~24,000 in Mar-May 2026, 8,574 during the incident. Note it counts the *raw* response, before dedup — the test fixture has 25,473 raw offers (24,803 after dedup), so raising `minOffers` above 25,473 would break `--test-parsing` unless the fixture is refreshed.
+- **`/bundles` `warning` and `deprecation` notices are logged.** The API returns these alongside the offers; `logApiNotice()` prints each at `WARN` level on **every** update cycle — deliberately repetitive, so a standing notice stays visible in recent logs instead of scrolling out of history after a single startup message. Currently:
+  ```
+  WARN: /bundles warning: disable_bundling is deprecated and will be removed in a future release.
+  WARN: /bundles deprecation: {"parameter": "disable_bundling", "status": "deprecated", "current_phase": 2, "removed_in_phase": 3}
+  ```
+  The `/bundles` query still passes `disable_bundling: true`, so offer collection **will break when Vast.ai reaches phase 3**. Not yet addressed.
 - **Hosts are sorted by TFLOPS descending**, with lowest machine_id as tie-breaker for determinism.
 - **The geo cache** is persisted to disk so MaxMind isn't re-queried for known IPs across restarts.
 - **`--master-url`** allows slave instances to fetch offer data from a master exporter instead of hitting Vast.ai directly, reducing API load. The slave sends `If-Modified-Since` on subsequent requests; if the master returns 304, the slave keeps its cached data and skips reprocessing. The default `--update-interval` is 5s in master mode (vs 1m when hitting the Vast.ai API directly).
 - **State files** are stored in `--state-dir` (default `$HOME`): `.vastai_geo_cache`, `.vastai_last_payouts`.
 - **Static analysis**: the project passes `golangci-lint run ./...` cleanly. Keep it that way.
+
+### Known broken: `--test-parsing` cannot complete
+
+`getPayouts()` (`api_invoices.go`) calls a second endpoint, `invoices` (the newer
+lifetime-invoices API), which is **not** in `testDataFiles` in `test_mode.go` — only
+`users/current/invoices` is mapped. In test mode that call escapes to the real network,
+fails, and `getPayouts()` returns an error, so the account collector's
+`InitialUpdateFrom()` fails and `main()` exits before `testFetchAllEndpoints()` runs.
+
+The offers pipeline itself works fine in test mode (all `/offers`, `/machines`, `/hosts`,
+`/gpu-stats*` and `/host-map-data*` responses are built and their sizes logged) — only
+the final writing of `test-output/` is unreachable. To compare two builds today, diff
+the `INFO: Pre-serialized ...` **raw** byte counts from the logs. Do not compare gzipped
+sizes: `pgzip` is nondeterministic and they vary by 1-2 bytes between runs of the same binary.
+
+Fixing this needs an `invoices` entry in `testDataFiles` plus a captured fixture.
