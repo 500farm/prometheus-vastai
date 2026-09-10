@@ -140,6 +140,11 @@ func storeLastPayouts(payouts *PayoutInfo) {
 }
 
 func readInvoiceState() *InvoiceState {
+	if testDataSource != "" {
+		// test mode replays the full lifetime invoice list regardless of the
+		// incremental filter, so start from scratch to get a correct total
+		return nil
+	}
 	j, err := os.ReadFile(*stateDir + "/.vastai_invoice_state")
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
@@ -157,6 +162,10 @@ func readInvoiceState() *InvoiceState {
 }
 
 func storeInvoiceState(state *InvoiceState) {
+	if testDataSource != "" {
+		// test mode must not mutate the state dir, so that runs are reproducible
+		return
+	}
 	j, err := json.Marshal(state)
 	if err != nil {
 		log.Println("ERROR:", err)

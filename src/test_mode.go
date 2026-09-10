@@ -19,6 +19,7 @@ var testDataFiles = map[string]string{
 	"machines":               testFileMachines,
 	"instances":              testFileInstances,
 	"users/current/invoices": testFileInvoices,
+	"invoices":               testFileInvoices2,
 }
 
 const (
@@ -26,6 +27,7 @@ const (
 	testFileMachines  = "machines.json"
 	testFileInstances = "instances.json"
 	testFileInvoices  = "invoices.json"
+	testFileInvoices2 = "invoices2.json"
 )
 
 func readTestData(endpoint string) ([]byte, bool) {
@@ -70,6 +72,9 @@ func downloadTestData() {
 		{"machines", testFileMachines, "machines", nil, defaultTimeout},
 		{"instances", testFileInstances, "instances", nil, defaultTimeout},
 		{"invoices", testFileInvoices, "users/current/invoices", nil, defaultTimeout},
+		{"invoices (lifetime)", testFileInvoices2, "invoices",
+			url.Values{"select_cols": {jsonArg([]string{"when", "amount_cents"})}},
+			defaultTimeout},
 	} {
 		log.Printf("INFO: Downloading %s...", f.name)
 

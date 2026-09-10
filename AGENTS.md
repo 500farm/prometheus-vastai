@@ -59,7 +59,8 @@ This saves raw API responses to `testdir/test-data/`:
 - `bundles.json` (~70 MB) — all offers from Vast.ai
 - `machines.json` — your machines
 - `instances.json` — your instances
-- `invoices.json` — your invoices/payouts
+- `invoices.json` — your invoices/payouts (old `users/current/invoices` API)
+- `invoices2.json` — lifetime invoices (newer `invoices` API)
 
 ### Step 2: Run parsing offline (no network needed)
 
@@ -244,20 +245,25 @@ Both V1 and V2 collectors are embedded in `VastAiGlobalCollector` and `VastAiAcc
 - **The geo cache** is persisted to disk so MaxMind isn't re-queried for known IPs across restarts.
 - **`--master-url`** allows slave instances to fetch offer data from a master exporter instead of hitting Vast.ai directly, reducing API load. The slave sends `If-Modified-Since` on subsequent requests; if the master returns 304, the slave keeps its cached data and skips reprocessing. The default `--update-interval` is 5s in master mode (vs 1m when hitting the Vast.ai API directly).
 - **State files** are stored in `--state-dir` (default `$HOME`): `.vastai_geo_cache`, `.vastai_last_payouts`.
+- **The API key is redacted from logs.** `vastApiCallRaw()` logs every request URL, which carries `api_key=` as a query param; `redactApiKey()` (`api.go`) replaces it before logging. Keep any new URL logging behind it. Note the key is still visible in `docker inspect` output, since it is passed as a command-line flag.
 - **Static analysis**: the project passes `golangci-lint run ./...` cleanly. Keep it that way.
 
-### Known broken: `--test-parsing` cannot complete
+### Test mode does not write state files
 
-`getPayouts()` (`api_invoices.go`) calls a second endpoint, `invoices` (the newer
-lifetime-invoices API), which is **not** in `testDataFiles` in `test_mode.go` — only
-`users/current/invoices` is mapped. In test mode that call escapes to the real network,
-fails, and `getPayouts()` returns an error, so the account collector's
-`InitialUpdateFrom()` fails and `main()` exits before `testFetchAllEndpoints()` runs.
+`--test-parsing` must be reproducible, so `readInvoiceState()` and `storeInvoiceState()`
+(`api_invoices.go`) are both no-ops when `testDataSource != ""`.
 
-The offers pipeline itself works fine in test mode (all `/offers`, `/machines`, `/hosts`,
-`/gpu-stats*` and `/host-map-data*` responses are built and their sizes logged) — only
-the final writing of `test-output/` is unreachable. To compare two builds today, diff
-the `INFO: Pre-serialized ...` **raw** byte counts from the logs. Do not compare gzipped
-sizes: `pgzip` is nondeterministic and they vary by 1-2 bytes between runs of the same binary.
+This matters because `readTestData()` keys fixtures by endpoint only and ignores query
+args, so the `invoices` fixture is replayed in full regardless of the incremental
+`select_filters` the real code sends. Without the guards, every run would add the whole
+lifetime invoice total onto the stored `paidOutCents` and persist it — inflating
+`vastai_paid_out_dollars` on each run and corrupting the real state dir. Skipping the
+read as well means test mode always does an "initial fetch", which yields the correct
+lifetime total (verified: test mode and production both report `344208.44`).
 
-Fixing this needs an `invoices` entry in `testDataFiles` plus a captured fixture.
+When comparing two builds, note that `offers.json`, `machines.json`, `hosts.json` and
+`gpu-stats*.json` embed a `timestamp` of `time.Now()`, and `metrics*.txt` contain
+`go_gc_*` and `vastai_exporter_process_duration_seconds` timing metrics — all of these
+differ between runs. Everything else is byte-stable. Also do not compare gzipped sizes
+from the logs: `pgzip` is nondeterministic and they vary by 1-2 bytes between runs of
+the same binary.

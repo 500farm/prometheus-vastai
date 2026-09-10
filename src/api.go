@@ -180,7 +180,7 @@ func vastApiCallRaw(endpoint string, args url.Values, timeout time.Duration) ([]
 	}
 
 	elapsed := time.Since(start)
-	log.Println("INFO: GET", url, "took", elapsed)
+	log.Println("INFO: GET", redactApiKey(url), "took", elapsed)
 
 	if metrics != nil {
 		metrics.ObserveAPIDuration(endpoint, elapsed.Seconds())
@@ -188,6 +188,12 @@ func vastApiCallRaw(endpoint string, args url.Values, timeout time.Duration) ([]
 	}
 
 	return body, nil
+}
+
+var apiKeyInUrl = regexp.MustCompile(`(api_key=)[^&]*`)
+
+func redactApiKey(url string) string {
+	return apiKeyInUrl.ReplaceAllString(url, "${1}REDACTED")
 }
 
 func logErrorBody(body []byte) {
